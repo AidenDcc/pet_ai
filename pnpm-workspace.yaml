@@ -1,0 +1,4 @@
+# pnpm 构建脚本许可配置
+allowBuilds:
+  esbuild: true
+  '@parcel/watcher': true

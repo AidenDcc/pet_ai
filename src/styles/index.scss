@@ -1,0 +1,234 @@
+/* ===== ShuxinPet 全局样式 ===== */
+
+/* ---------- 主题令牌 ---------- */
+:root {
+  /* 品牌色：宠物科技感的清新青绿 */
+  --sp-primary: #00b4a6;
+  --sp-primary-light: #33c6ba;
+  --sp-primary-dark: #009084;
+  --sp-bg: #f5f7fa;
+  --sp-card: #ffffff;
+  --sp-text: #1f2d3d;
+  --sp-text-secondary: #5e6d82;
+  --sp-text-placeholder: #a3b0c0;
+  --sp-border: #e4e9f0;
+  --sp-radius: 12px;
+  --sp-shadow: 0 2px 12px rgba(31, 45, 61, 0.06);
+  --sp-success: #34c759;
+  --sp-warning: #ff9500;
+  --sp-danger: #ff3b30;
+  --sp-info: #007aff;
+
+  /* Element Plus 主色覆盖 */
+  --el-color-primary: #00b4a6;
+  --el-color-primary-light-3: #33c6ba;
+  --el-color-primary-light-5: #66d8cf;
+  --el-color-primary-light-7: #99e9e3;
+  --el-color-primary-light-8: #b3efeb;
+  --el-color-primary-light-9: #e6faf8;
+  --el-color-primary-dark-2: #009084;
+
+  /* Vant 主色覆盖 */
+  --van-primary-color: #00b4a6;
+}
+
+/* ---------- 宠物主 APP（用户端 + APP 登录）活力橙主题 ----------
+ * 通过 body.theme-orange 覆盖主题令牌；Vant/Element 弹层挂载在 body 上，
+ * 因此把 class 加在 body 上，所有弹层/Toast 都能继承橙色。
+ */
+body.theme-orange {
+  --sp-primary: #ff6b00;
+  --sp-primary-light: #ff8a3d;
+  --sp-primary-dark: #e25f00;
+
+  /* Element Plus 主色覆盖 */
+  --el-color-primary: #ff6b00;
+  --el-color-primary-light-3: #ff8a3d;
+  --el-color-primary-light-5: #ffad73;
+  --el-color-primary-light-7: #ffd0ab;
+  --el-color-primary-light-8: #ffe0c4;
+  --el-color-primary-light-9: #fff1e6;
+  --el-color-primary-dark-2: #e25f00;
+
+  /* Vant 主色覆盖 */
+  --van-primary-color: #ff6b00;
+}
+
+/* ---------- Reset ---------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html,
+body,
+#app {
+  height: 100%;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue',
+    'Microsoft YaHei', sans-serif;
+  background: var(--sp-bg);
+  color: var(--sp-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+a {
+  text-decoration: none;
+  color: inherit;
+}
+ul,
+ol {
+  list-style: none;
+}
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+input,
+textarea {
+  outline: none;
+  font-family: inherit;
+}
+
+/* ---------- 通用工具类 ---------- */
+.sp-card {
+  background: var(--sp-card);
+  border-radius: var(--sp-radius);
+  box-shadow: var(--sp-shadow);
+}
+
+.text-secondary {
+  color: var(--sp-text-secondary);
+}
+.text-success {
+  color: var(--sp-success);
+}
+.text-warning {
+  color: var(--sp-warning);
+}
+.text-danger {
+  color: var(--sp-danger);
+}
+.text-primary {
+  color: var(--sp-primary);
+}
+.text-placeholder {
+  color: var(--sp-text-placeholder);
+}
+
+.flex {
+  display: flex;
+  align-items: center;
+}
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+.gap-8 {
+  gap: 8px;
+}
+.gap-12 {
+  gap: 12px;
+}
+.gap-16 {
+  gap: 16px;
+}
+
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-16 { margin-bottom: 16px; }
+.mb-24 { margin-bottom: 24px; }
+
+.fw-600 { font-weight: 600; }
+.fs-12 { font-size: 12px; }
+.fs-13 { font-size: 13px; }
+.fs-14 { font-size: 14px; }
+.fs-16 { font-size: 16px; }
+.fs-18 { font-size: 18px; }
+.fs-20 { font-size: 20px; }
+.fs-24 { font-size: 24px; }
+.fs-28 { font-size: 28px; }
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c8d1de;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- 桌面端页面容器 ---------- */
+.page-container {
+  padding: 20px;
+}
+.page-header {
+  margin-bottom: 16px;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+.page-desc {
+  font-size: 13px;
+  color: var(--sp-text-secondary);
+  margin-top: 4px;
+}
+
+/* ---------- Element Plus 细节调整 ---------- */
+.el-card {
+  border-radius: var(--sp-radius);
+  border-color: var(--sp-border);
+}
+.el-table {
+  --el-table-border-color: var(--sp-border);
+}
+
+/* ---------- Vant 细节调整 ---------- */
+.van-nav-bar {
+  background: var(--sp-primary);
+}
+.van-nav-bar__title,
+.van-nav-bar .van-icon {
+  color: #fff;
+}
+
+/* ---------- 手机外壳内 Vant 弹层约束 ----------
+ * Vant 的 overlay/popup/action-sheet 默认挂载到 body 并使用 position:fixed；
+ * 通过 teleport="#phone-teleport" 将它们注入手机屏幕内的定位容器后，
+ * 需要把 fixed 改为 absolute，使其约束在手机屏幕范围内。 */
+#phone-teleport {
+  .van-overlay {
+    position: absolute !important;
+  }
+  .van-popup {
+    position: absolute !important;
+  }
+  .van-action-sheet {
+    position: absolute !important;
+  }
+}

@@ -1,0 +1,235 @@
+<script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+
+/** 手机外壳：华为 Mate80 风格 — 居中挖孔屏 + 曲面屏边框，slot 内为 APP 屏幕内容 */
+const clock = ref('')
+let timer: number | undefined
+
+function tick() {
+  const d = new Date()
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  clock.value = `${hh}:${mm}`
+}
+
+onMounted(() => {
+  tick()
+  timer = window.setInterval(tick, 1000)
+})
+
+onBeforeUnmount(() => {
+  if (timer) window.clearInterval(timer)
+})
+</script>
+
+<template>
+  <div class="phone-shell">
+    <!-- 侧边按键 -->
+    <div class="side-btn side-btn--power"></div>
+    <div class="side-btn side-btn--volume-up"></div>
+    <div class="side-btn side-btn--volume-down"></div>
+
+    <div class="phone-screen">
+      <!-- 华为 Mate80 居中挖孔前摄 -->
+      <div class="phone-punch-hole"></div>
+
+      <!-- 状态栏：时间 + 信号图标 -->
+      <div class="phone-statusbar">
+        <span class="sb-time">{{ clock }}</span>
+        <span class="sb-icons">
+          <span class="sb-signal">▂▄▆█</span>
+          <span class="sb-battery">
+            <span class="battery-icon">
+              <span class="battery-fill"></span>
+            </span>
+          </span>
+        </span>
+      </div>
+
+      <!-- App 内容区域 -->
+      <div class="phone-app">
+        <slot />
+      </div>
+
+      <!-- 底部导航条 -->
+      <div class="phone-nav-bar"></div>
+
+      <!-- Vant 弹层 teleport 容器：弹层渲染在此处以约束在手机屏幕内 -->
+      <div id="phone-teleport" class="phone-teleport"></div>
+    </div>
+  </div>
+</template>
+
+<style scoped lang="scss">
+.phone-shell {
+  position: relative;
+  width: min(390px, calc(100vw - 32px));
+  height: calc(100vh - 48px);
+  max-height: 860px;
+  min-height: 620px;
+  margin: 24px auto;
+  padding: 8px;
+  border-radius: 48px;
+  background: linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  border: 6px solid #2a2a3a;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 0 0 2px rgba(100, 140, 200, 0.15) inset;
+}
+
+/* 侧边实体按键 */
+.side-btn {
+  position: absolute;
+  right: -8px;
+  background: linear-gradient(180deg, #3a3a4a, #1a1a2a);
+  border-radius: 3px 5px 5px 3px;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+
+  &--power {
+    top: 22%;
+    width: 4px;
+    height: 48px;
+  }
+
+  &--volume-up {
+    top: 14%;
+    width: 4px;
+    height: 30px;
+  }
+
+  &--volume-down {
+    top: 18%;
+    width: 4px;
+    height: 30px;
+  }
+}
+
+.phone-screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 42px;
+  overflow: hidden;
+  background: var(--sp-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 居中挖孔前摄 — 华为 Mate80 标志性设计 */
+.phone-punch-hole {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #000;
+  border: 1.5px solid #1a1a1a;
+  z-index: 20;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
+}
+
+.phone-statusbar {
+  flex-shrink: 0;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--sp-primary);
+
+  .sb-icons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .sb-signal {
+    font-size: 10px;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  .sb-battery {
+    display: flex;
+    align-items: center;
+  }
+
+  .battery-icon {
+    display: inline-block;
+    width: 22px;
+    height: 11px;
+    border: 1.5px solid #fff;
+    border-radius: 2px;
+    padding: 1.5px;
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      right: -3px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2px;
+      height: 5px;
+      background: #fff;
+      border-radius: 0 1px 1px 0;
+    }
+  }
+
+  .battery-fill {
+    display: block;
+    height: 100%;
+    width: 75%;
+    background: #fff;
+    border-radius: 1px;
+  }
+}
+
+.phone-app {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* 底部手势导航条 */
+.phone-nav-bar {
+  flex-shrink: 0;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sp-bg);
+
+  &::after {
+    content: '';
+    width: 100px;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+}
+
+/* Vant 弹层 teleport 容器：fill the phone screen, position:relative so
+   Vant overlays with position:fixed become absolute within */
+.phone-teleport {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+
+  /* allow interaction with children */
+  > * {
+    pointer-events: auto;
+  }
+}
+</style>
