@@ -99,6 +99,23 @@ Pet AI/
 - **路由匹配**：`resolveMock` 支持 `:param` 路径参数；**静态路径须声明在参数化路径之前**（如 `/report/review-list` 在 `/report/:id` 之前），否则会被通配吞掉。
 - **数据变更即时生效**：绑定设备、解除绑定、下单支付、审核报告、修改套餐价格等都会真实改动 `db.ts` 内存对象，刷新列表即可看到变化。
 
+## 部署到 Cloudflare Pages
+
+高德地图的 `VITE_AMAP_KEY` / `VITE_AMAP_JSCODE` 读取自 `.env.local`，但该文件被 `.gitignore` 忽略，**不会进入云端构建环境**——所以部署到 Cloudflare 后构建出来的包中 Key 为空，地图会提示「未配置高德地图 Key」。
+
+解决分两步（缺一不可）：
+
+1. **在 Cloudflare 配置构建环境变量**
+   Cloudflare 控制台 → Workers & Pages → 本项目 → **Settings → Environment variables**，新增（Production，若用预览域名也加 Preview）：
+   - `VITE_AMAP_KEY`
+   - `VITE_AMAP_JSCODE`
+   注意必须是**非加密**变量（加密变量仅在 Functions 运行时可用，不会注入构建过程），然后重新触发部署。Vite 构建时会自动把环境里的 `VITE_` 前缀变量内联进产物。
+
+2. **把部署域名加入高德 Key 白名单**
+   高德开放平台 → 控制台 → 应用管理 → 该「Web端(JS API)」Key → 设置 → 添加**域名白名单**，例如 `https://<你的项目>.pages.dev`（及自定义域名）。否则即使 Key 存在，也会提示「高德地图域名未授权」。
+
+> 说明：Web 端 JS API 的 Key 本就会随前端代码公开，属正常现象；建议为生产环境单独申请一个 Key 并仅绑定部署域名。
+
 ## 验证情况
 
 - [x] `pnpm type-check`（vue-tsc）零错误

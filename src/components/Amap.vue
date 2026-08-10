@@ -76,9 +76,11 @@ function loadSdk(): Promise<void> {
   if (loadPromise) return loadPromise
 
   if (!AMAP_KEY) {
-    loadPromise = Promise.reject(
-      new Error('未配置高德地图 Key：请在项目根目录 .env.local 设置 VITE_AMAP_KEY 与 VITE_AMAP_JSCODE'),
-    )
+    // 区分开发/生产：本机走 .env.local，部署平台（如 Cloudflare Pages）走构建环境变量
+    const hint = import.meta.env.DEV
+      ? '请在本机项目根目录 .env.local 配置 VITE_AMAP_KEY 与 VITE_AMAP_JSCODE，然后重启 dev 服务'
+      : '请在部署平台（如 Cloudflare Pages → Settings → 环境变量）配置 VITE_AMAP_KEY 与 VITE_AMAP_JSCODE，并重新构建部署'
+    loadPromise = Promise.reject(new Error('未配置高德地图 Key：' + hint))
     return loadPromise
   }
 
