@@ -7,6 +7,7 @@ import { getDoctorPatientsApi, getPetDetailApi, type PatientRow, type PetDetail 
 import { getDoctorConsultationsApi, type ConsultationJoined } from '@/api/modules/consultation'
 import { SPECIES_ICON, GENDER_LABEL, DEVICE_STATUS, toVantTagType } from '@/utils/consts'
 import { ageOf, formatDateTime } from '@/utils/format'
+import { petAvatarSrc } from '@/utils/petAvatar'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -98,7 +99,7 @@ async function openDetail(row: PatientRow) {
           @load="onLoad"
         >
           <div v-for="p in list" :key="p.id" class="patient-card sp-card" @click="openDetail(p)">
-            <van-image round width="44" height="44" :src="p.avatar" />
+            <van-image round width="44" height="44" :src="petAvatarSrc(p.name) || p.avatar" />
             <div class="patient-main">
               <div class="patient-name">
                 {{ SPECIES_ICON[p.species] }} {{ p.name }}
@@ -126,7 +127,7 @@ async function openDetail(row: PatientRow) {
 
         <div v-for="c in consults" :key="c.id" class="consult-card sp-card" @click="router.push(`/doctor/pet/${c.petId}`)">
           <div class="consult-head">
-            <van-image round width="44" height="44" :src="c.pet.avatar" />
+            <van-image round width="44" height="44" :src="petAvatarSrc(c.pet.name) || c.pet.avatar" />
             <div class="consult-main">
               <div class="consult-name">
                 {{ SPECIES_ICON[c.pet.species] }} {{ c.pet.name }}
@@ -175,7 +176,7 @@ async function openDetail(row: PatientRow) {
       <van-skeleton :loading="detailLoading" :row="6" />
       <template v-if="detail">
         <div class="drawer-head">
-          <van-image round width="56" height="56" :src="detail.avatar" />
+          <van-image round width="56" height="56" :src="petAvatarSrc(detail.name) || detail.avatar" />
           <div>
             <div class="fs-18 fw-700">{{ SPECIES_ICON[detail.species] }} {{ detail.name }}</div>
             <div class="text-secondary fs-12">

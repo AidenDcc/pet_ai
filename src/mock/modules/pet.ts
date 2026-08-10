@@ -42,6 +42,7 @@ defineMock([
       const pet = findPetById(params.id)
       if (!pet) throw new MockError('宠物不存在', 404)
       const patch = (body ?? {}) as Partial<PetInfo>
+      if ((patch.personalityTags ?? []).length > 10) throw new MockError('性格标签最多 10 个')
       Object.assign(pet, patch)
       return joinPet(pet)
     },
@@ -96,6 +97,7 @@ defineMock([
       const user = requireUser(ctx)
       const body = (ctx.body ?? {}) as Partial<PetInfo>
       if (!body.name) throw new MockError('宠物昵称不能为空')
+      if ((body.personalityTags ?? []).length > 10) throw new MockError('性格标签最多 10 个')
       const now = new Date().toISOString()
       const name = body.name || '未命名'
       const pet: PetInfo = {
@@ -106,7 +108,7 @@ defineMock([
         gender: body.gender || 'male',
         birthDate: body.birthDate || now,
         weight: body.weight ?? 0,
-        avatar: `data:image/svg+xml,${encodeURIComponent(
+        avatar: body.avatar || `data:image/svg+xml,${encodeURIComponent(
           `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" rx="48" fill="#5b8ff9"/><text x="48" y="62" font-size="40" text-anchor="middle" fill="#fff" font-family="sans-serif">${name.slice(0, 1)}</text></svg>`,
         )}`,
         ownerId: user.id,
@@ -114,6 +116,9 @@ defineMock([
         sterilized: body.sterilized ?? false,
         microchip: `${Math.floor(Math.random() * 900000000 + 100000000)}${Math.floor(Math.random() * 900000000 + 100000000)}`,
         createdAt: now,
+        vaccines: body.vaccines ?? [],
+        dewormings: body.dewormings ?? [],
+        personalityTags: body.personalityTags ?? [],
       }
       pets.push(pet)
       user.petIds.push(pet.id)

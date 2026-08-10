@@ -24,7 +24,15 @@ const MENUS: Record<string, AdminMenuNode[]> = {
     { path: '/admin/bi', titleKey: 'nav.admin.bi', icon: 'DataAnalysis' },
     { path: '/admin/devices', titleKey: 'nav.admin.devices', icon: 'Monitor' },
     { path: '/admin/users', titleKey: 'nav.admin.users', icon: 'User' },
-    { path: '/admin/pets', titleKey: 'nav.admin.pets', icon: 'Coin' },
+    {
+      titleKey: 'nav.admin.pets',
+      icon: 'Coin',
+      children: [
+        { path: '/admin/pets/archive', titleKey: 'nav.admin.petArchive', icon: 'Document' },
+        { path: '/admin/pets/health', titleKey: 'nav.admin.petHealth', icon: 'Monitor' },
+        { path: '/admin/pets/reports', titleKey: 'nav.admin.petReports', icon: 'Tickets' },
+      ],
+    },
     { path: '/admin/vets', titleKey: 'nav.admin.vets', icon: 'FirstAidKit' },
     { path: '/admin/orders', titleKey: 'nav.admin.orders', icon: 'List' },
     { path: '/admin/subscriptions', titleKey: 'nav.admin.subscriptions', icon: 'CreditCard' },
@@ -46,6 +54,18 @@ const MENUS: Record<string, AdminMenuNode[]> = {
 }
 
 const menus = computed(() => MENUS[auth.role] ?? [])
+
+/** 侧边栏当前高亮项：取与当前路径匹配的最长菜单叶子路径。
+ *  详情类路由（如 /admin/pets/reports/:id）不在菜单叶子上，需回退到所属菜单叶子以保持高亮与展开。 */
+const activeMenu = computed(() => {
+  const p = route.path
+  const leaves = menus.value.flatMap((n) => ('path' in n ? [n.path] : n.children.map((c) => c.path)))
+  const match = leaves
+    .filter((leaf) => p === leaf || p.startsWith(leaf + '/'))
+    .sort((a, b) => b.length - a.length)[0]
+  return match ?? p
+})
+
 const roleLabel = computed(() => (auth.role ? t(ROLE_LABEL[auth.role as Role]) : ''))
 const pageTitle = computed(() => (route.meta.titleKey ? t(route.meta.titleKey as string) : ''))
 
@@ -71,7 +91,7 @@ function onCommand(command: string) {
             <div class="logo-sub">{{ t('brand.platform') }}</div>
           </div>
         </div>
-        <el-menu class="admin-menu" :default-active="route.path" router>
+        <el-menu class="admin-menu" :default-active="activeMenu" router>
           <template v-for="node in menus" :key="'path' in node ? node.path : node.titleKey">
             <el-sub-menu v-if="!('path' in node)" :index="node.titleKey">
               <template #title>

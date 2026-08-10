@@ -177,6 +177,9 @@ function addPet(data: Partial<PetInfo>): PetInfo {
     sterilized: Math.random() > 0.4,
     microchip: `${rand(900000000, 999999999)}${rand(100000000, 999999999)}`,
     createdAt: new Date(Date.now() - rand(10, 300) * 86400000).toISOString(),
+    vaccines: [],
+    dewormings: [],
+    personalityTags: [],
     ...data,
   }
   if (!pet.avatar) pet.avatar = avatarOf(pet.name)
@@ -187,7 +190,7 @@ function addPet(data: Partial<PetInfo>): PetInfo {
   return pet
 }
 
-const p1 = addPet({
+addPet({
   id: 'p1',
   name: '布丁',
   species: 'dog',
@@ -197,8 +200,18 @@ const p1 = addPet({
   weight: 8.6,
   ownerId: demoOwner.id,
   sterilized: true,
+  vaccines: [
+    { id: 'p1v1', name: '犬八联疫苗', date: '2024-03-20', note: '第三针' },
+    { id: 'p1v2', name: '狂犬病疫苗', date: '2025-05-18' },
+  ],
+  dewormings: [
+    { id: 'p1d1', name: '体内驱虫', date: '2025-06-01' },
+    { id: 'p1d2', name: '体外驱虫', date: '2025-06-15' },
+    { id: 'p1d3', name: '体内驱虫', date: '2025-07-01' },
+  ],
+  personalityTags: ['活泼', '粘人', '贪吃', '拆家'],
 })
-const p2 = addPet({
+addPet({
   id: 'p2',
   name: '雪球',
   species: 'cat',
@@ -208,6 +221,14 @@ const p2 = addPet({
   weight: 4.2,
   ownerId: demoOwner.id,
   sterilized: true,
+  vaccines: [
+    { id: 'p2v1', name: '猫三联疫苗', date: '2024-04-02' },
+    { id: 'p2v2', name: '狂犬病疫苗', date: '2025-01-12' },
+  ],
+  dewormings: [
+    { id: 'p2d1', name: '体内外同驱', date: '2025-06-20' },
+  ],
+  personalityTags: ['高冷', '爱睡觉', '挑食'],
 })
 
 // 批量宠物（与批量用户配对）
@@ -237,6 +258,7 @@ function addDevice(data: Partial<DeviceInfo>): DeviceInfo {
     model: 'Pet-S1',
     status: 'online',
     battery: rand(35, 98),
+    signal: rand(-85, -40),
     firmware: 'v2.4.1',
     boundPetId: null,
     ownerId: null,
@@ -257,6 +279,7 @@ addDevice({
   ownerId: demoOwner.id,
   status: 'online',
   battery: 78,
+  signal: -52,
   geofence: { center: { lat: 31.2304, lng: 121.4737 }, radius: 500, enabled: true },
 })
 addDevice({
@@ -267,6 +290,7 @@ addDevice({
   ownerId: demoOwner.id,
   status: 'online',
   battery: 63,
+  signal: -68,
   geofence: { center: { lat: 31.2204, lng: 121.4637 }, radius: 300, enabled: true },
 })
 
@@ -308,6 +332,7 @@ export const vets: VetInfo[] = [
     avatar: avatarOf('陈'),
     certStatus: 'approved',
     specialty: '小动物内科 / 心脏病学',
+    consultPrice: 60,
     phone: '13800000002',
     petIds: ['p1', 'p2', 'p3', 'p5'],
   },
@@ -319,6 +344,7 @@ export const vets: VetInfo[] = [
     avatar: avatarOf('李'),
     certStatus: 'approved',
     specialty: '皮肤科 / 老年宠护理',
+    consultPrice: 40,
     phone: '13911110002',
     petIds: ['p4', 'p6'],
   },
@@ -330,6 +356,7 @@ export const vets: VetInfo[] = [
     avatar: avatarOf('王'),
     certStatus: 'pending',
     specialty: '骨科 / 麻醉',
+    consultPrice: 30,
     phone: '13877770003',
     petIds: [],
   },
@@ -341,13 +368,14 @@ export const vets: VetInfo[] = [
     avatar: avatarOf('赵'),
     certStatus: 'pending',
     specialty: '内科 / 影像学',
+    consultPrice: 30,
     phone: '13755550004',
     petIds: [],
   },
 ]
 
 /* ============================================================
- * 健康数据（仅演示宠物 p1/p2 生成）
+ * 健康数据（为全部已绑定设备的宠物生成，供运营端健康管理按宠物维度查看）
  * ============================================================ */
 export const health: Record<string, HealthMetric[]> = {}
 /** 更细粒度的实时流（每 5 分钟一条，最近 2 小时） */
@@ -422,7 +450,8 @@ function genDaily(pet: PetInfo) {
   return arr
 }
 
-for (const pet of [p1, p2]) {
+// 为全部已绑定设备的宠物生成健康数据（运营端健康管理按宠物维度查看）
+for (const pet of pets) {
   health[pet.id] = genHealth(pet)
   telemetry[pet.id] = genTelemetry(pet)
   dailyAgg[pet.id] = genDaily(pet)
@@ -446,7 +475,7 @@ function genTrack(center: { lat: number; lng: number }): GeoPoint[] {
   return pts
 }
 
-for (const pet of [p1, p2]) {
+for (const pet of pets) {
   const device = devices.find((d) => d.boundPetId === pet.id)
   tracks[pet.id] = genTrack(device?.geofence?.center ?? { lat: 31.2304, lng: 121.4737 })
 }
@@ -518,7 +547,7 @@ function genReports(pet: PetInfo): ReportItem[] {
   return list
 }
 
-export const reports: ReportItem[] = [...genReports(p1), ...genReports(p2)]
+export const reports: ReportItem[] = pets.flatMap((p) => genReports(p))
 
 /* ============================================================
  * 订单
@@ -812,7 +841,10 @@ const MENU_SEEDS: Array<Omit<SysMenu, 'children'>> = [
   { id: 'm2', parentId: null, name: 'BI 报表', type: 'dir', icon: 'DataAnalysis', path: '/admin/bi', perm: '', sort: 2, visible: true, status: 'active' },
   { id: 'm4', parentId: null, name: '设备管理', type: 'dir', icon: 'Monitor', path: '/admin/devices', perm: '', sort: 4, visible: true, status: 'active' },
   { id: 'm5', parentId: null, name: '用户管理', type: 'dir', icon: 'User', path: '/admin/users', perm: '', sort: 5, visible: true, status: 'active' },
-  { id: 'm6', parentId: null, name: '宠物档案', type: 'dir', icon: 'Coin', path: '/admin/pets', perm: '', sort: 6, visible: true, status: 'active' },
+  { id: 'm6', parentId: null, name: '宠物管理', type: 'dir', icon: 'Coin', path: '/admin/pets', perm: '', sort: 6, visible: true, status: 'active' },
+  { id: 'm21', parentId: 'm6', name: '宠物档案', type: 'menu', icon: 'Document', path: '/admin/pets/archive', perm: 'admin:pet:archive:list', sort: 1, visible: true, status: 'active' },
+  { id: 'm22', parentId: 'm6', name: '健康管理', type: 'menu', icon: 'Monitor', path: '/admin/pets/health', perm: 'admin:pet:health:list', sort: 2, visible: true, status: 'active' },
+  { id: 'm23', parentId: 'm6', name: '健康报告', type: 'menu', icon: 'Tickets', path: '/admin/pets/reports', perm: 'admin:pet:report:list', sort: 3, visible: true, status: 'active' },
   { id: 'm7', parentId: null, name: '医生管理', type: 'dir', icon: 'FirstAidKit', path: '/admin/vets', perm: '', sort: 7, visible: true, status: 'active' },
   { id: 'm8', parentId: null, name: '订单管理', type: 'dir', icon: 'List', path: '/admin/orders', perm: '', sort: 8, visible: true, status: 'active' },
   { id: 'm9', parentId: null, name: '订阅套餐', type: 'dir', icon: 'CreditCard', path: '/admin/subscriptions', perm: '', sort: 9, visible: true, status: 'active' },
@@ -855,7 +887,7 @@ addRole({
   sort: 2,
   status: 'active',
   remark: '负责运营与内容管理',
-  menuIds: ['m1', 'm2', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm14', 'm15', 'm17', 'm18', 'm19'],
+  menuIds: ['m1', 'm2', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm14', 'm15', 'm17', 'm18', 'm19', 'm21', 'm22', 'm23'],
 })
 addRole({
   id: 'r3',

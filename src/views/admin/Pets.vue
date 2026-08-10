@@ -46,7 +46,7 @@ onMounted(load)
 <template>
   <div class="page-container">
     <div class="page-header">
-      <div class="page-title">{{ t('nav.admin.pets') }}</div>
+      <div class="page-title">{{ t('nav.admin.petArchive') }}</div>
       <div class="page-desc">{{ t('admin.pets.desc') }}</div>
     </div>
 

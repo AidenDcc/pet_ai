@@ -6,6 +6,7 @@ import { showToast, showDialog } from 'vant'
 import { getMyPetsApi, deletePetApi, type PetJoined } from '@/api/modules/pet'
 import { SPECIES_ICON, GENDER_LABEL, DEVICE_STATUS, toVantTagType } from '@/utils/consts'
 import { ageOf } from '@/utils/format'
+import { petAvatarSrc } from '@/utils/petAvatar'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -81,7 +82,7 @@ load()
     <template v-else>
       <van-swipe-cell v-for="pet in pets" :key="pet.id">
         <div class="pet-card sp-card" @click="goEdit(pet.id)">
-          <img class="pet-avatar" :src="pet.avatar" :alt="pet.name" />
+          <img class="pet-avatar" :src="petAvatarSrc(pet.name) || pet.avatar" :alt="pet.name" />
           <div class="pet-info">
             <div class="pet-name">
               {{ SPECIES_ICON[pet.species] }} {{ pet.name }}

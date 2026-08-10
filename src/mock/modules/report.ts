@@ -55,6 +55,18 @@ defineMock([
         .sort((a, b) => b.startAt - a.startAt)
     },
   },
+  // 运营端：平台全部宠物的历史健康报告（含待审核，可按宠物过滤）
+  {
+    method: 'get',
+    path: '/admin/reports',
+    handler: (ctx) => {
+      requireRole(ctx, 'admin')
+      const petId = (ctx.query.petId as string) || ''
+      let list = reports
+      if (petId) list = list.filter((r) => r.petId === petId)
+      return list.map(joinReport).sort((a, b) => b.startAt - a.startAt)
+    },
+  },
   // 报告详情（放在静态路径之后，避免覆盖 review-list / all）
   {
     method: 'get',

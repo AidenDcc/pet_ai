@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { showToast } from 'vant'
 import { getMyPetsApi, type PetJoined } from '@/api/modules/pet'
 import { bindDeviceApi, scanBluetoothApi, type BluetoothDevice } from '@/api/modules/device'
+import { petAvatarSrc } from '@/utils/petAvatar'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -264,7 +265,7 @@ startScan()
         <van-radio-group v-model="petId" direction="vertical" class="pet-radios">
           <van-radio v-for="p in pets" :key="p.id" :name="p.id" class="pet-radio">
             <div class="pet-option">
-              <img class="pet-avatar" :src="p.avatar" :alt="p.name" />
+              <img class="pet-avatar" :src="petAvatarSrc(p.name) || p.avatar" :alt="p.name" />
               <div>
                 <div class="pet-name">{{ p.name }}</div>
                 <div class="pet-desc">{{ p.breed }} · {{ p.weight }}kg{{ p.device ? t('user.bind.boundSuffix') : '' }}</div>
@@ -311,7 +312,7 @@ startScan()
         <div v-if="selectedPet" class="confirm-row pet-row">
           <span class="confirm-label">🐾 {{ t('user.bind.bindTo') }}</span>
           <div class="confirm-pet">
-            <img :src="selectedPet.avatar" :alt="selectedPet.name" class="cp-avatar" />
+            <img :src="petAvatarSrc(selectedPet.name) || selectedPet.avatar" :alt="selectedPet.name" class="cp-avatar" />
             <div>
               <div class="cp-name">{{ selectedPet.name }}</div>
               <div class="cp-desc">{{ selectedPet.breed }} · {{ selectedPet.weight }}kg</div>

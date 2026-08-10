@@ -1,5 +1,5 @@
 import type { DeviceInfo, UploadRecord } from '@/types'
-import { defineMock, MockError, requireUser, mockAddress } from '../helper'
+import { defineMock, MockError, requireUser, mockAddress, rand } from '../helper'
 import { devices, pets, findDeviceById, findDeviceBySn, findPetById, tracks, telemetry, uploadLogs, pushUpload } from '../db'
 
 export interface DeviceJoined extends DeviceInfo {
@@ -126,6 +126,12 @@ defineMock([
       const device = findDeviceById(String(deviceId ?? ''))
       if (!device) throw new MockError('设备不存在', 404)
       if (device.status !== 'online') throw new MockError('设备当前离线，指令无法下发', 1006)
+      // 刷新定位指令同时模拟一次上报：更新信号 / 电量 / 同步时间
+      if (command === 'refresh') {
+        device.signal = rand(-85, -40)
+        device.battery = Math.max(5, Math.min(100, device.battery + rand(-2, 3)))
+        device.lastSyncAt = new Date().toISOString()
+      }
       return {
         ok: true,
         message: COMMAND_TEXT[String(command ?? '')] ?? '指令已下发',

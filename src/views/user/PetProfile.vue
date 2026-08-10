@@ -12,14 +12,35 @@ import {
 } from '@/api/modules/consultation'
 import { SPECIES_ICON, GENDER_LABEL, DEVICE_STATUS, toVantTagType } from '@/utils/consts'
 import { ageOf, formatDate, formatDateTime } from '@/utils/format'
+import { petAvatarSrc } from '@/utils/petAvatar'
 import type { DoctorBrief, PetInfo } from '@/types'
+import PetAvatarUploader from '@/components/PetAvatarUploader.vue'
+import PetCareSections from '@/components/PetCareSections.vue'
 
 const route = useRoute()
 const petId = route.params.id as string
 const { t } = useI18n()
 
 const pet = ref<PetJoined | null>(null)
-const form = ref<Partial<PetInfo>>({})
+const form = ref<{
+  name: string
+  weight: number
+  gender: 'male' | 'female'
+  sterilized: boolean
+  avatar: string
+  vaccines: PetInfo['vaccines']
+  dewormings: PetInfo['dewormings']
+  personalityTags: PetInfo['personalityTags']
+}>({
+  name: '',
+  weight: 0,
+  gender: 'male',
+  sterilized: false,
+  avatar: '',
+  vaccines: [],
+  dewormings: [],
+  personalityTags: [],
+})
 const saving = ref(false)
 
 const doctors = ref<DoctorBrief[]>([])
@@ -37,6 +58,10 @@ async function load() {
       weight: pet.value.weight,
       gender: pet.value.gender,
       sterilized: pet.value.sterilized,
+      avatar: pet.value.avatar,
+      vaccines: [...(pet.value.vaccines ?? [])],
+      dewormings: [...(pet.value.dewormings ?? [])],
+      personalityTags: [...(pet.value.personalityTags ?? [])],
     }
   } catch (e) {
     showToast((e as Error).message || t('common.loadFailed'))
@@ -114,7 +139,7 @@ loadPushed()
   <div v-if="pet" class="profile">
     <!-- 档案头 -->
     <div class="profile-head sp-card">
-      <img class="pet-avatar" :src="pet.avatar" :alt="pet.name" />
+      <img class="pet-avatar" :src="petAvatarSrc(pet.name) || pet.avatar" :alt="pet.name" />
       <div class="pet-name">{{ SPECIES_ICON[pet.species] }} {{ pet.name }}</div>
       <div class="pet-desc">{{ pet.breed }} · {{ t(GENDER_LABEL[pet.gender]) }} · {{ t('common.yearsOld', { n: ageOf(pet.birthDate) }) }}</div>
       <div class="pet-chip">
@@ -143,6 +168,10 @@ loadPushed()
     <!-- 编辑表单 -->
     <div class="form sp-card mt-16">
       <div class="form-title">{{ t('user.profile.editTitle') }}</div>
+      <div class="field-block">
+        <span class="field-label">{{ t('user.petCare.avatar') }}</span>
+        <PetAvatarUploader v-model="form.avatar" />
+      </div>
       <van-field v-model="form.name" :label="t('user.profile.nickname')" :placeholder="t('user.profile.nicknamePlaceholder')" />
       <van-field
         v-model="form.weight"
@@ -163,6 +192,15 @@ loadPushed()
       </div>
       <van-cell :title="t('user.profile.microchip')" :value="pet.microchip" />
       <van-cell :title="t('user.profile.createdAt')" :value="formatDate(pet.createdAt)" />
+    </div>
+
+    <!-- 疫苗 / 驱虫 / 性格标签维护 -->
+    <div class="care-sections mt-16">
+      <PetCareSections
+        v-model:vaccines="form.vaccines"
+        v-model:dewormings="form.dewormings"
+        v-model:personalityTags="form.personalityTags"
+      />
     </div>
 
     <div class="save-bar">

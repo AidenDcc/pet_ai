@@ -10,6 +10,7 @@ import { getFencesApi, type PetFence } from '@/api/modules/fence'
 import { getExerciseSummaryApi, type ExerciseState } from '@/api/modules/exercise'
 import Amap from '@/components/Amap.vue'
 import { SPECIES_ICON } from '@/utils/consts'
+import { petAvatarSrc } from '@/utils/petAvatar'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -142,7 +143,7 @@ loadAll()
         :class="{ 'pet-tab--active': index === activeIndex }"
         @click="onPetSelect(index)"
       >
-        <img class="pet-tab-avatar" :src="pet.avatar" :alt="pet.name" />
+        <img class="pet-tab-avatar" :src="petAvatarSrc(pet.name) || pet.avatar" :alt="pet.name" />
         <span v-if="index === activeIndex" class="pet-tab-name">{{ pet.name }}</span>
       </div>
     </div>
@@ -156,7 +157,7 @@ loadAll()
 
       <!-- 宠物头部信息 -->
       <div class="panel-pet-header">
-        <img class="panel-avatar" :src="activePet.avatar" :alt="activePet.name" />
+        <img class="panel-avatar" :src="petAvatarSrc(activePet.name) || activePet.avatar" :alt="activePet.name" />
         <div class="panel-pet-info">
           <div class="panel-pet-name">
             {{ SPECIES_ICON[activePet.species] }} {{ activePet.name }}

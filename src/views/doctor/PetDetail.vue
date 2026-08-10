@@ -10,6 +10,7 @@ import { getAllReportsApi, type ReportJoined } from '@/api/modules/report'
 import VitalChart from '@/components/VitalChart.vue'
 import { SPECIES_ICON, GENDER_LABEL } from '@/utils/consts'
 import { ageOf, formatDate, formatDateTime } from '@/utils/format'
+import { petAvatarSrc } from '@/utils/petAvatar'
 import type { HealthMetric, HealthMetricType, NormalRange } from '@/types'
 
 const route = useRoute()
@@ -108,7 +109,7 @@ onMounted(loadAll)
       <!-- 宠物 + 主人头卡 -->
       <div class="head-card sp-card">
         <div class="head-top">
-          <van-image round width="60" height="60" :src="pet.avatar" />
+          <van-image round width="60" height="60" :src="petAvatarSrc(pet.name) || pet.avatar" />
           <div class="head-main">
             <div class="head-name">{{ SPECIES_ICON[pet.species] }} {{ pet.name }}</div>
             <div class="head-sub">

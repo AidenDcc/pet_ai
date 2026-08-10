@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { getReviewListApi, type ReportJoined } from '@/api/modules/report'
 import { getDoctorPatientsApi, type PatientRow } from '@/api/modules/pet'
 import { DEVICE_STATUS, SPECIES_ICON, toVantTagType } from '@/utils/consts'
+import { petAvatarSrc } from '@/utils/petAvatar'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -115,7 +116,7 @@ onMounted(load)
         </div>
         <van-empty v-if="!onlinePatients.length" :description="t('doctor.dashboard.noOnlinePet')" />
         <div v-for="p in onlinePatients.slice(0, 8)" :key="p.id" class="row-item" @click="router.push('/doctor/patients')">
-          <van-image round width="34" height="34" :src="p.avatar" />
+          <van-image round width="34" height="34" :src="petAvatarSrc(p.name) || p.avatar" />
           <div class="row-info">
             <div class="row-name">{{ SPECIES_ICON[p.species] }} {{ p.name }}</div>
             <div class="row-desc">{{ p.breed }} · {{ p.owner?.name ?? '' }}</div>

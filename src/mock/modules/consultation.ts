@@ -20,7 +20,7 @@ defineMock([
       requireUser(ctx)
       return vets
         .filter((v) => v.certStatus === 'approved')
-        .map(({ id, name, hospital, title, avatar, specialty }) => ({ id, name, hospital, title, avatar, specialty }))
+        .map(({ id, name, hospital, title, avatar, specialty, consultPrice }) => ({ id, name, hospital, title, avatar, specialty, consultPrice }))
     },
   },
   // 宠物主推送健康数据给医生（同宠物同医生重复推送视为更新）

@@ -15,6 +15,22 @@ export interface UserInfo {
   status: 'active' | 'disabled'
 }
 
+/** 疫苗记录 */
+export interface VaccineRecord {
+  id: string
+  name: string
+  date: string // yyyy-mm-dd
+  note?: string
+}
+
+/** 驱虫记录 */
+export interface DewormRecord {
+  id: string
+  name: string
+  date: string // yyyy-mm-dd
+  note?: string
+}
+
 /** 宠物档案 */
 export interface PetInfo {
   id: string
@@ -30,6 +46,12 @@ export interface PetInfo {
   sterilized: boolean
   microchip: string
   createdAt: string
+  /** 疫苗记录 */
+  vaccines: VaccineRecord[]
+  /** 驱虫记录 */
+  dewormings: DewormRecord[]
+  /** 性格标签（最多 10 个） */
+  personalityTags: string[]
 }
 
 /** 设备在线状态 */
@@ -82,6 +104,7 @@ export interface DeviceInfo {
   model: 'Pet-S1'
   status: DeviceStatus
   battery: number // 0-100
+  signal: number // RSSI 信号强度 dBm（-100 ~ -30）
   firmware: string
   boundPetId: string | null
   ownerId: string | null
@@ -160,6 +183,8 @@ export interface VetInfo {
   avatar: string
   certStatus: 'pending' | 'approved' | 'rejected'
   specialty: string
+  /** 问诊定价（元） */
+  consultPrice: number
   phone: string
   petIds: string[]
 }
@@ -272,6 +297,8 @@ export interface DoctorBrief {
   title: string
   avatar: string
   specialty: string
+  /** 问诊定价（元） */
+  consultPrice: number
 }
 
 /* ============================================================

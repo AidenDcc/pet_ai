@@ -28,7 +28,7 @@ export const userRoutes: RouteRecordRaw[] = [
         path: 'home',
         name: 'user-home',
         component: () => import('@/views/user/Home.vue'),
-        meta: { titleKey: 'nav.home', tabbar: true },
+        meta: { titleKey: 'nav.home', tabbar: true, hideNavbar: true },
       },
       {
         path: 'health',
@@ -60,6 +60,49 @@ export const userRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/user/CommunityDetail.vue'),
         meta: { titleKey: 'nav.communityDetail' },
       },
+      // 首页功能占位页（在线问诊/爱宠食谱/宠语翻译/健康自检/萌宠相册/爱宠记账/待办记录）
+      {
+        path: 'consult',
+        name: 'user-consult',
+        component: () => import('@/views/user/Consult.vue'),
+        meta: { titleKey: 'nav.consult' },
+      },
+      {
+        path: 'recipes',
+        name: 'user-recipes',
+        component: () => import('@/views/user/FeaturePlaceholder.vue'),
+        meta: { titleKey: 'nav.recipes', icon: 'shop-o' },
+      },
+      {
+        path: 'translate',
+        name: 'user-translate',
+        component: () => import('@/views/user/FeaturePlaceholder.vue'),
+        meta: { titleKey: 'nav.translate', icon: 'chat-o' },
+      },
+      {
+        path: 'selfcheck',
+        name: 'user-selfcheck',
+        component: () => import('@/views/user/FeaturePlaceholder.vue'),
+        meta: { titleKey: 'nav.selfcheck', icon: 'checked' },
+      },
+      {
+        path: 'album',
+        name: 'user-album',
+        component: () => import('@/views/user/FeaturePlaceholder.vue'),
+        meta: { titleKey: 'nav.album', icon: 'photo-o' },
+      },
+      {
+        path: 'ledger',
+        name: 'user-ledger',
+        component: () => import('@/views/user/FeaturePlaceholder.vue'),
+        meta: { titleKey: 'nav.ledger', icon: 'gold-coin-o' },
+      },
+      {
+        path: 'todo',
+        name: 'user-todo',
+        component: () => import('@/views/user/FeaturePlaceholder.vue'),
+        meta: { titleKey: 'nav.todo', icon: 'todo-list-o' },
+      },
       {
         path: 'me',
         name: 'user-me',
@@ -89,6 +132,12 @@ export const userRoutes: RouteRecordRaw[] = [
         name: 'user-device-bind',
         component: () => import('@/views/user/DeviceBind.vue'),
         meta: { titleKey: 'nav.bindDevice' },
+      },
+      {
+        path: 'devices/:id',
+        name: 'user-device-detail',
+        component: () => import('@/views/user/DeviceDetail.vue'),
+        meta: { titleKey: 'user.devices.detail' },
       },
       {
         path: 'pets',
@@ -218,9 +267,34 @@ export const adminRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'pets',
-        name: 'admin-pets',
-        component: () => import('@/views/admin/Pets.vue'),
         meta: { titleKey: 'nav.admin.pets' },
+        children: [
+          { path: '', redirect: '/admin/pets/archive' },
+          {
+            path: 'archive',
+            name: 'admin-pets',
+            component: () => import('@/views/admin/Pets.vue'),
+            meta: { titleKey: 'nav.admin.petArchive' },
+          },
+          {
+            path: 'health',
+            name: 'admin-pet-health',
+            component: () => import('@/views/admin/PetHealth.vue'),
+            meta: { titleKey: 'nav.admin.petHealth' },
+          },
+          {
+            path: 'reports',
+            name: 'admin-pet-reports',
+            component: () => import('@/views/admin/PetReports.vue'),
+            meta: { titleKey: 'nav.admin.petReports' },
+          },
+          {
+            path: 'reports/:id',
+            name: 'admin-pet-report-detail',
+            component: () => import('@/views/admin/ReportDetail.vue'),
+            meta: { titleKey: 'nav.admin.reportDetail' },
+          },
+        ],
       },
       {
         path: 'vets',

@@ -9,6 +9,7 @@ import { getExerciseSeriesApi } from '@/api/modules/exercise'
 import { getPetApi, type PetJoined } from '@/api/modules/pet'
 import VitalChart from '@/components/VitalChart.vue'
 import { SPECIES_ICON, SPECIES_LABEL } from '@/utils/consts'
+import { petAvatarSrc } from '@/utils/petAvatar'
 import type { HealthMetricType, ExercisePoint } from '@/types'
 
 const route = useRoute()
@@ -126,7 +127,7 @@ watch(petId, loadPet, { immediate: true })
   <div class="metric-trend">
     <!-- 宠物信息（昵称/头像等） -->
     <div v-if="pet" class="pet-header sp-card">
-      <van-image round class="pet-header-avatar" :src="pet.avatar" fit="cover" />
+      <van-image round class="pet-header-avatar" :src="petAvatarSrc(pet.name) || pet.avatar" fit="cover" />
       <div class="pet-header-info">
         <div class="pet-header-name">{{ SPECIES_ICON[pet.species] }} {{ pet.name }}</div>
         <div class="pet-header-meta">{{ t(SPECIES_LABEL[pet.species]) }} · {{ pet.breed }}</div>

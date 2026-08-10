@@ -7,6 +7,7 @@ import { getHealthTelemetryApi } from '@/api/modules/health'
 import VitalChart from '@/components/VitalChart.vue'
 import { DEVICE_STATUS, toVantTagType } from '@/utils/consts'
 import { formatDateTime } from '@/utils/format'
+import { petAvatarSrc } from '@/utils/petAvatar'
 import type { HealthMetric, HealthMetricType } from '@/types'
 
 const { t } = useI18n()
@@ -122,7 +123,7 @@ onBeforeUnmount(() => {
     <template v-if="!loading && selectedPatient">
       <!-- 患者选择 -->
       <div class="selector sp-card" @click="pickerVisible = true">
-        <van-image round width="32" height="32" :src="selectedPatient.avatar" />
+        <van-image round width="32" height="32" :src="petAvatarSrc(selectedPatient.name) || selectedPatient.avatar" />
         <div class="selector-info">
           <div class="selector-name">{{ selectedPatient.name }} · {{ selectedPatient.breed }}</div>
           <div class="selector-desc">{{ t('doctor.telemetry.realtimeNote') }}</div>

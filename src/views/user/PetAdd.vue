@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showToast } from 'vant'
 import { createPetApi } from '@/api/modules/pet'
+import PetAvatarUploader from '@/components/PetAvatarUploader.vue'
+import PetCareSections from '@/components/PetCareSections.vue'
+import type { VaccineRecord, DewormRecord } from '@/types'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -11,14 +14,30 @@ const { t } = useI18n()
 const dogBreeds = ['柯基', '金毛', '边牧', '柴犬', '泰迪', '哈士奇', '萨摩耶', '拉布拉多']
 const catBreeds = ['布偶猫', '英短', '美短', '橘猫', '蓝猫', '暹罗猫', '狸花猫', '中华田园猫']
 
-const form = ref({
+const form = ref<{
+  avatar: string
+  name: string
+  species: 'dog' | 'cat' | ''
+  breed: string
+  gender: 'male' | 'female' | ''
+  birthDate: string
+  weight?: number
+  sterilized: boolean
+  vaccines: VaccineRecord[]
+  dewormings: DewormRecord[]
+  personalityTags: string[]
+}>({
+  avatar: '',
   name: '',
-  species: '' as 'dog' | 'cat' | '',
+  species: '',
   breed: '',
-  gender: '' as 'male' | 'female' | '',
+  gender: '',
   birthDate: '',
-  weight: undefined as number | undefined,
+  weight: undefined,
   sterilized: false,
+  vaccines: [],
+  dewormings: [],
+  personalityTags: [],
 })
 
 const breedOptions = computed(() => {
@@ -61,6 +80,10 @@ async function doSave() {
       birthDate: form.value.birthDate || new Date().toISOString(),
       weight: form.value.weight ?? 0,
       sterilized: form.value.sterilized,
+      avatar: form.value.avatar || undefined,
+      vaccines: form.value.vaccines,
+      dewormings: form.value.dewormings,
+      personalityTags: form.value.personalityTags,
     })
     showToast(t('user.petAdd.addSuccess'))
     router.replace('/user/pets')
@@ -75,6 +98,12 @@ async function doSave() {
 <template>
   <div class="pet-add">
     <div class="form sp-card mt-16 mx-14">
+      <!-- 头像 -->
+      <div class="field-block">
+        <span class="field-label">{{ t('user.petCare.avatar') }}</span>
+        <PetAvatarUploader v-model="form.avatar" />
+      </div>
+
       <van-field
         v-model="form.name"
         :label="t('user.profile.nickname')"
@@ -131,6 +160,15 @@ async function doSave() {
         <span class="field-label">{{ t('user.profile.sterilized') }}</span>
         <van-switch v-model="form.sterilized" size="22px" color="#ff6b00" />
       </div>
+    </div>
+
+    <!-- 疫苗 / 驱虫 / 性格标签 -->
+    <div class="care-sections mt-16 mx-14">
+      <PetCareSections
+        v-model:vaccines="form.vaccines"
+        v-model:dewormings="form.dewormings"
+        v-model:personalityTags="form.personalityTags"
+      />
     </div>
 
     <div class="save-bar">

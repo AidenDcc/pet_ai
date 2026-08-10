@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showToast, showConfirmDialog } from 'vant'
@@ -36,10 +36,16 @@ async function load() {
   }
 }
 
+onMounted(load)
+
 function batteryType(b: number) {
   if (b > 50) return '#ff6b00'
   if (b > 20) return '#ff9500'
   return '#ff3b30'
+}
+
+function goDetail(device: DeviceJoined) {
+  router.push(`/user/devices/${device.id}`)
 }
 
 function openCommands(device: DeviceJoined) {
@@ -93,7 +99,7 @@ async function unbind(device: DeviceJoined) {
     <van-skeleton :loading="loading" :row="4" />
 
     <div v-for="d in devices" :key="d.id" class="device-card sp-card">
-      <div class="device-top">
+      <div class="device-top" @click="goDetail(d)">
         <div class="device-icon">📟</div>
         <div class="device-info">
           <div class="device-name">
@@ -103,6 +109,7 @@ async function unbind(device: DeviceJoined) {
           <div class="device-sn">SN: {{ d.sn }}</div>
         </div>
         <van-tag v-if="d.status === 'low-power'" round type="warning">{{ t('user.devices.needCharge') }}</van-tag>
+        <van-icon name="arrow" class="device-arrow" />
       </div>
 
       <div class="device-mid">
@@ -117,6 +124,9 @@ async function unbind(device: DeviceJoined) {
       </div>
 
       <div class="device-actions">
+        <van-button size="small" round plain icon="info-o" @click="goDetail(d)">
+          {{ t('user.devices.detailBtn') }}
+        </van-button>
         <template v-if="d.boundPetId">
           <van-button size="small" round plain type="primary" icon="location-o" @click="router.push('/user/health')">
             {{ t('user.devices.findPet') }}
@@ -169,6 +179,7 @@ async function unbind(device: DeviceJoined) {
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
   .device-icon {
     font-size: 26px;
   }
@@ -183,6 +194,9 @@ async function unbind(device: DeviceJoined) {
       font-size: 12px;
       color: var(--sp-text-placeholder);
     }
+  }
+  .device-arrow {
+    color: var(--sp-text-placeholder);
   }
 }
 .device-mid {

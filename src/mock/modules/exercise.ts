@@ -1,10 +1,18 @@
 import type { ExerciseState, ExercisePoint } from '@/types'
 import { defineMock, MockError } from '../helper'
+import { pets } from '../db'
 
-/** 运动实时状态（内存） */
-const exerciseStates: Record<string, ExerciseState> = {
-  p1: { stepFreq: 82, stride: 28, gait: 'walk', speed: 0.8, updatedAt: Date.now() },
-  p2: { stepFreq: 45, stride: 18, gait: 'rest', speed: 0.1, updatedAt: Date.now() },
+/** 运动实时状态（内存）：为全部宠物按品种生成基准状态 */
+const exerciseStates: Record<string, ExerciseState> = {}
+for (const pet of pets) {
+  const isCat = pet.species === 'cat'
+  exerciseStates[pet.id] = {
+    stepFreq: isCat ? 45 : 80,
+    stride: isCat ? 16 : 26,
+    gait: 'walk',
+    speed: 0.4,
+    updatedAt: Date.now(),
+  }
 }
 
 /** 生成运动趋势数据 */
@@ -15,8 +23,10 @@ function generateExerciseSeries(petId: string, days: number): ExercisePoint[] {
   const interval = days === 1 ? 300000 : days <= 7 ? 3600000 : 14400000 // 5min, 1h, 4h
 
   const totalPoints = days === 1 ? 288 : days <= 7 ? days * 24 : days * 6
-  const baseFreq = petId === 'p1' ? 75 : 45
-  const baseStride = petId === 'p1' ? 26 : 16
+  const pet = pets.find((p) => p.id === petId)
+  const isCat = pet?.species === 'cat'
+  const baseFreq = isCat ? 45 : 75
+  const baseStride = isCat ? 16 : 26
 
   for (let i = totalPoints - 1; i >= 0; i--) {
     const ts = now - i * interval
