@@ -43,11 +43,11 @@ onBeforeUnmount(() => {
       <div class="phone-statusbar" :class="{ 'statusbar--transparent': transparentStatus }">
         <span class="sb-time">{{ clock }}</span>
         <span class="sb-icons">
-          <span class="sb-signal">▂▄▆█</span>
+          <span class="sb-signal">
+            <img src="../asset/image/信号.svg" alt="signal" />
+          </span>
           <span class="sb-battery">
-            <span class="battery-icon">
-              <span class="battery-fill"></span>
-            </span>
+            <img src="../asset/image/电池电量.svg" alt="battery" />
           </span>
         </span>
       </div>
@@ -159,15 +159,9 @@ onBeforeUnmount(() => {
     left: 0;
     right: 0;
     z-index: 10;
-    .sb-signal,
-    .sb-battery .battery-icon {
-      border-color: #333;
-    }
-    .sb-battery .battery-icon::after {
-      background: #333;
-    }
-    .battery-fill {
-      background: #333;
+    .sb-signal img,
+    .sb-battery img {
+      filter: brightness(0.2);
     }
   }
 
@@ -182,41 +176,23 @@ onBeforeUnmount(() => {
     font-size: 10px;
     letter-spacing: -1px;
     line-height: 1;
+
+    img {
+      display: block;
+      width: 17px;
+      height: auto;
+    }
   }
 
   .sb-battery {
     display: flex;
     align-items: center;
-  }
 
-  .battery-icon {
-    display: inline-block;
-    width: 22px;
-    height: 11px;
-    border: 1.5px solid #fff;
-    border-radius: 2px;
-    padding: 1.5px;
-    position: relative;
-
-    &::after {
-      content: '';
-      position: absolute;
-      right: -3px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 2px;
-      height: 5px;
-      background: #fff;
-      border-radius: 0 1px 1px 0;
+    img {
+      display: block;
+      width: 32px;
+      height: 20px;
     }
-  }
-
-  .battery-fill {
-    display: block;
-    height: 100%;
-    width: 75%;
-    background: #fff;
-    border-radius: 1px;
   }
 }
 

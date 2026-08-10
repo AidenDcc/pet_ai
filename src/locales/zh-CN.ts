@@ -7,7 +7,8 @@ export default {
   nav: {
     home: '首页',
     health: '健康',
-    community: '宠屋',
+    guard: '守护',
+    community: '宠圈',
     communityDetail: '帖子详情',
     me: '我的',
     sync: '数据同步',
@@ -248,7 +249,7 @@ export default {
       noTrendData: '暂无趋势数据',
     },
     community: {
-      title: '宠屋',
+      title: '宠圈',
       searchPlaceholder: '搜索萌宠、宠物名或关键词',
       tabAll: '宠物圈',
       tabFollow: '关注萌宠',

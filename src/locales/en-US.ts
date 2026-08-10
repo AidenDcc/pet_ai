@@ -7,7 +7,8 @@ export default {
   nav: {
     home: 'Home',
     health: 'Health',
-    community: 'Pet Home',
+    guard: 'Guard',
+    community: 'Pet Circle',
     communityDetail: 'Post Detail',
     me: 'Me',
     sync: 'Sync',
@@ -248,7 +249,7 @@ export default {
       noTrendData: 'No trend data',
     },
     community: {
-      title: 'Pet Home',
+      title: 'Pet Circle',
       searchPlaceholder: 'Search pets or keywords',
       tabAll: 'Pet Circle',
       tabFollow: 'Following',
