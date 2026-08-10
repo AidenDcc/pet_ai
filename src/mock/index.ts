@@ -14,5 +14,7 @@ import './modules/assistant'
 import './modules/consultation'
 import './modules/bi'
 import './modules/i18n'
+import './modules/fence'
+import './modules/exercise'
 
 export { resolveMock, MockError } from './helper'

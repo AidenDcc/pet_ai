@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import type { PetFence } from '@/types'
 
 interface Point {
   lat: number
@@ -14,6 +15,8 @@ const props = withDefaults(
     radius?: number
     showFence?: boolean
     showTrack?: boolean
+    fences?: PetFence[]
+    fullscreen?: boolean
   }>(),
   {
     points: () => [],
@@ -21,11 +24,14 @@ const props = withDefaults(
     radius: 500,
     showFence: true,
     showTrack: true,
+    fences: () => [],
+    fullscreen: false,
   },
 )
 
-const AMAP_KEY = '4edcefcfccfd24b5cdbe07687d416fe774'
-const AMAP_JSCODE = 'c6b85eaf6f6b70ee2e5428b3609ed245'
+// 从环境变量读取（在项目根目录 .env.local 配置），避免硬编码与泄露
+const AMAP_KEY = import.meta.env.VITE_AMAP_KEY ?? ''
+const AMAP_JSCODE = import.meta.env.VITE_AMAP_JSCODE ?? ''
 
 const containerRef = ref<HTMLDivElement>()
 const mapReady = ref(false)
@@ -35,115 +41,101 @@ let trackLine: AMap.Polyline | null = null
 let fenceCircle: AMap.Circle | null = null
 let petMarker: AMap.Marker | null = null
 let trackMarkers: AMap.Marker[] = []
+let fenceOverlays: (AMap.Circle | AMap.Marker)[] = []
 
 /** —— SDK 动态加载（AMapLoader 官方方式）—— */
-let sdkLoadingPromise: Promise<void> | null = null
+// 高德 JS API v2.0 要求整页只调用一次 AMapLoader.load()，
+// 因此用模块级 loadPromise 复用同一次加载尝试：
+// 成功后所有 Amap 实例共享就绪状态；失败也共享同一条错误（需修正配置后刷新页面）。
+let loadPromise: Promise<void> | null = null
+
+/** 把高德返回的鉴权错误翻译成可操作的提示 */
+function buildAuthErrorMessage(detail: string): string {
+  const d = detail.toLowerCase()
+  if (d.includes('domain') || detail.includes('域名')) {
+    return '高德地图域名未授权：请到控制台把当前域名加入白名单（本地开发请绑定 localhost）'
+  }
+  if (d.includes('scode') || detail.includes('安全密钥') || detail.includes('秘钥')) {
+    return '高德地图安全密钥无效：请检查 .env.local 中的 VITE_AMAP_JSCODE 是否与 Key 配对'
+  }
+  // 默认按 Key 无效处理（最常见的 INVALID_USER_KEY）
+  return '高德地图 Key 无效或鉴权失败：请检查 .env.local 中的 VITE_AMAP_KEY 是否正确'
+}
 
 function loadSdk(): Promise<void> {
-  // 全局去重：同一页面多个 Amap 实例只加载一次
   if ((window as any).__amap_sdk_ready) return Promise.resolve()
-  if (sdkLoadingPromise) return sdkLoadingPromise
+  if (loadPromise) return loadPromise
 
-  // 如果 SDK 已完全就绪，直接返回
-  if (typeof (window as any).AMap?.Map === 'function') {
-    ;(window as any).__amap_sdk_ready = true
-    return Promise.resolve()
+  if (!AMAP_KEY) {
+    loadPromise = Promise.reject(
+      new Error('未配置高德地图 Key：请在项目根目录 .env.local 设置 VITE_AMAP_KEY 与 VITE_AMAP_JSCODE'),
+    )
+    return loadPromise
   }
 
-  sdkLoadingPromise = new Promise<void>((resolve, reject) => {
+  loadPromise = new Promise<void>((resolve, reject) => {
     // 安全秘钥必须在 SDK 加载前设置（官方要求）
     ;(window as any)._AMapSecurityConfig = {
       securityJsCode: AMAP_JSCODE,
     }
 
-    // 避免重复注入 loader.js
-    if (document.querySelector('script[data-amap-loader]')) {
-      // loader.js 已在加载中，等待 AMapLoader 可用后调用 load()
-      waitForLoader(resolve, reject)
+    const onLoaderReady = () => callLoader(resolve, reject)
+
+    // loader.js 已加载则直接调用，否则注入 script
+    if ((window as any).AMapLoader?.load) {
+      onLoaderReady()
       return
     }
 
     const script = document.createElement('script')
     script.dataset.amapLoader = '1'
     script.src = 'https://webapi.amap.com/loader.js'
-
-    script.onerror = () => {
-      sdkLoadingPromise = null
-      reject(new Error('高德地图 SDK 网络加载失败'))
-    }
-
-    script.onload = () => {
-      // loader.js 加载完成后，AMapLoader 全局可用，调用其 load() 方法
-      waitForLoader(resolve, reject)
-    }
-
+    script.onerror = () => reject(new Error('高德地图 SDK 网络加载失败，请检查网络连接'))
+    script.onload = onLoaderReady
     document.head.appendChild(script)
   })
 
-  return sdkLoadingPromise
+  return loadPromise
 }
 
-function waitForLoader(resolve: () => void, reject: (e: Error) => void) {
-  const AMapLoader = (window as any).AMapLoader
-  if (!AMapLoader || typeof AMapLoader.load !== 'function') {
-    // AMapLoader 还没准备好，轮询等待
-    const start = Date.now()
-    const timer = setInterval(() => {
-      const loader = (window as any).AMapLoader
-      if (loader && typeof loader.load === 'function') {
-        clearInterval(timer)
-        doLoad(loader, resolve, reject)
-      } else if (Date.now() - start > 15000) {
-        clearInterval(timer)
-        sdkLoadingPromise = null
-        reject(new Error('高德地图 Loader 加载超时'))
-      }
-    }, 100)
+function callLoader(resolve: () => void, reject: (e: Error) => void) {
+  const loader = (window as any).AMapLoader
+  if (!loader || typeof loader.load !== 'function') {
+    reject(new Error('高德地图 Loader 初始化失败'))
     return
   }
-  doLoad(AMapLoader, resolve, reject)
-}
-
-function doLoad(
-  loader: { load: (opts: Record<string, unknown>) => Promise<unknown> },
-  resolve: () => void,
-  reject: (e: Error) => void,
-) {
   loader
-    .load({
-      key: AMAP_KEY,
-      version: '2.0',
-    })
+    .load({ key: AMAP_KEY, version: '2.0' })
     .then(() => {
-      // AMapLoader.load() resolve 后，window.AMap 及其所有核心模块已就绪
       ;(window as any).__amap_sdk_ready = true
       resolve()
     })
     .catch((e: unknown) => {
-      sdkLoadingPromise = null
-      reject(new Error('高德地图鉴权失败: ' + (e as Error).message))
+      reject(new Error(buildAuthErrorMessage((e as Error)?.message || String(e))))
     })
 }
 
 /** —— 地图初始化 —— */
 
-function boundsFromPoints() {
-  const all: Point[] = [...props.points]
-  if (props.center) all.push(props.center)
-  if (!all.length) return { center: [121.4737, 31.2304] as [number, number], zoom: 14 }
-  const lngs = all.map((p) => p.lng)
-  const lats = all.map((p) => p.lat)
-  const center: [number, number] = [
-    (Math.min(...lngs) + Math.max(...lngs)) / 2,
-    (Math.min(...lats) + Math.max(...lats)) / 2,
-  ]
-  return { center, zoom: 14 }
-}
-
 function initMap() {
   if (!containerRef.value) return
 
-  const { center } = boundsFromPoints()
+  const all: Point[] = [...props.points]
+  if (props.center) all.push(props.center)
+  // Include fence centers
+  props.fences.forEach((f) => {
+    if (f.enabled) all.push({ lat: f.center.lat, lng: f.center.lng })
+  })
+
+  let center: [number, number] = [121.4737, 31.2304]
+  if (all.length) {
+    const lngs = all.map((p) => p.lng)
+    const lats = all.map((p) => p.lat)
+    center = [
+      (Math.min(...lngs) + Math.max(...lngs)) / 2,
+      (Math.min(...lats) + Math.max(...lats)) / 2,
+    ]
+  }
 
   try {
     map = new AMap.Map(containerRef.value, {
@@ -166,6 +158,8 @@ function clearOverlays() {
   if (petMarker) { petMarker.setMap(null); petMarker = null }
   trackMarkers.forEach((m) => m.setMap(null))
   trackMarkers = []
+  fenceOverlays.forEach((o) => o.setMap(null))
+  fenceOverlays = []
 }
 
 function drawAll() {
@@ -187,7 +181,6 @@ function drawAll() {
     })
     trackLine.setMap(map)
 
-    // 历史采样点（小圆点）
     props.points.slice(0, -1).forEach((p) => {
       const m = new AMap.Marker({
         position: [p.lng, p.lat],
@@ -206,8 +199,41 @@ function drawAll() {
     })
   }
 
-  // 电子围栏
-  if (props.showFence && props.center) {
+  // 多电子围栏
+  props.fences.forEach((f) => {
+    if (!f.enabled && !props.showFence) return
+    const circle = new AMap.Circle({
+      center: [f.center.lng, f.center.lat],
+      radius: f.radius,
+      strokeColor: f.enabled ? '#ff6b00' : '#999',
+      strokeWeight: f.enabled ? 2 : 1,
+      strokeOpacity: f.enabled ? 0.9 : 0.5,
+      strokeStyle: f.enabled ? 'dashed' : 'dashed',
+      fillColor: f.enabled ? '#ff6b00' : '#999',
+      fillOpacity: f.enabled ? 0.08 : 0.03,
+      zIndex: 4,
+    })
+    circle.setMap(map)
+    fenceOverlays.push(circle)
+
+    // 围栏名称标签
+    const labelMarker = new AMap.Marker({
+      position: [f.center.lng, f.center.lat],
+      content:
+        '<div style="' +
+        'background:rgba(255,107,0,0.9);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;' +
+        'white-space:nowrap;transform:translate(-50%,-120%);box-shadow:0 1px 4px rgba(0,0,0,0.2);' +
+        (f.enabled ? '' : 'background:rgba(150,150,150,0.7);') +
+        '">' + f.name + '</div>',
+      offset: new AMap.Pixel(0, 0),
+      zIndex: 15,
+    })
+    labelMarker.setMap(map)
+    fenceOverlays.push(labelMarker)
+  })
+
+  // 单围栏兼容（旧 props）
+  if (props.showFence && props.center && props.fences.length === 0) {
     fenceCircle = new AMap.Circle({
       center: [props.center.lng, props.center.lat],
       radius: props.radius,
@@ -246,6 +272,9 @@ function fitView() {
   const all: [number, number][] = []
   if (props.showTrack) props.points.forEach((p) => all.push([p.lng, p.lat]))
   if (props.showFence && props.center) all.push([props.center.lng, props.center.lat])
+  props.fences.forEach((f) => {
+    if (f.enabled || props.showFence) all.push([f.center.lng, f.center.lat])
+  })
 
   if (all.length === 1) {
     map.setZoomAndCenter(15, all[0])
@@ -263,6 +292,11 @@ onMounted(async () => {
   }
 })
 
+/** 鉴权/加载失败后刷新整页（v2.0 不允许重复 load，刷新是最稳妥的重试方式） */
+function reload() {
+  location.reload()
+}
+
 onBeforeUnmount(() => {
   clearOverlays()
   if (map) {
@@ -272,7 +306,7 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => [props.points, props.center, props.radius, props.showFence, props.showTrack],
+  () => [props.points, props.center, props.radius, props.showFence, props.showTrack, props.fences],
   () => {
     if (mapReady.value) drawAll()
   },
@@ -281,7 +315,7 @@ watch(
 </script>
 
 <template>
-  <div class="amap-wrap">
+  <div class="amap-wrap" :class="{ 'amap-wrap--fullscreen': fullscreen }">
     <div ref="containerRef" class="amap-container" />
 
     <!-- 加载中 -->
@@ -294,6 +328,7 @@ watch(
     <div v-if="loadError" class="amap-loading">
       <span class="error-icon">⚠️</span>
       <span class="error-text">{{ loadError }}</span>
+      <van-button size="small" plain type="primary" class="retry-btn" @click="reload">刷新重试</van-button>
     </div>
   </div>
 </template>
@@ -308,10 +343,20 @@ watch(
   border: 1px solid var(--sp-border, #e4e7ed);
   background: #f5f7fa;
 }
+
+.amap-wrap--fullscreen {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+}
+
 .amap-container {
   width: 100%;
   height: 100%;
 }
+
 .amap-loading {
   position: absolute;
   inset: 0;
@@ -324,19 +369,30 @@ watch(
   border-radius: 14px;
   z-index: 1;
 }
+
+.amap-wrap--fullscreen .amap-loading {
+  border-radius: 0;
+}
+
 .loading-text {
   font-size: 12px;
   color: #999;
 }
+
 .error-icon {
   font-size: 28px;
 }
+
 .error-text {
   font-size: 13px;
   color: #ff6b6b;
   text-align: center;
   padding: 0 20px;
   line-height: 1.5;
+}
+
+.retry-btn {
+  margin-top: 4px;
 }
 </style>
 

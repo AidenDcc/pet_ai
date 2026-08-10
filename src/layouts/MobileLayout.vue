@@ -18,6 +18,7 @@ const i18nStore = useI18nStore()
 const isUserApp = computed(() => auth.role === 'user')
 
 const showTabbar = computed(() => route.meta.tabbar === true)
+const hideNavbar = computed(() => route.meta.hideNavbar === true)
 const title = computed(() => (route.meta.titleKey ? t(route.meta.titleKey as string) : 'ShuxinPet'))
 
 /** 语言切换：显示当前语言的短标签（中文=中 / English=EN），点击弹出选择 */
@@ -74,8 +75,8 @@ function onTabChange(name: string | number) {
 
 <template>
   <!-- 宠物主端：手机 APP 外壳 -->
-  <PhoneShell v-if="isUserApp">
-    <van-nav-bar :title="title">
+  <PhoneShell v-if="isUserApp" :transparent-status="hideNavbar">
+    <van-nav-bar v-if="!hideNavbar" :title="title">
       <template #left>
         <van-icon v-if="!showTabbar" name="arrow-left" size="18" @click="router.back()" />
       </template>
@@ -83,10 +84,10 @@ function onTabChange(name: string | number) {
         <span class="lang-toggle" @click="showLangSheet = true">{{ langLabel }}</span>
       </template>
     </van-nav-bar>
-    <div class="app-body">
+    <div class="app-body" :class="{ 'app-body--fullscreen': hideNavbar }">
       <router-view />
     </div>
-    <van-tabbar v-if="showTabbar" :model-value="active" :fixed="false" active-color="#ff6b00" @change="onTabChange">
+    <van-tabbar v-if="showTabbar" :model-value="active" :fixed="false" active-color="#ff6b00" :class="{ 'tabbar--bottom': hideNavbar }" @change="onTabChange">
       <van-tabbar-item v-for="tab in tabs" :key="tab.key" :name="tab.key" :icon="tab.icon">{{ t(tab.titleKey) }}</van-tabbar-item>
     </van-tabbar>
   </PhoneShell>
@@ -147,6 +148,18 @@ function onTabChange(name: string | number) {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+
+  &--fullscreen {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+}
+
+/* 全屏页（hideNavbar）时 app-body 为 absolute 脱离文档流，
+   tabbar 在 flex 容器中需要用 auto margin 推到底部 */
+:deep(.tabbar--bottom) {
+  margin-top: auto !important;
 }
 
 .lang-toggle {

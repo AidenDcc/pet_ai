@@ -1,58 +1,58 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showToast } from 'vant'
 import { getMyPetsApi, type PetJoined } from '@/api/modules/pet'
-import { getHealthSummaryApi, getHealthSeriesApi, type HealthSummary } from '@/api/modules/health'
-import VitalChart from '@/components/VitalChart.vue'
-import type { HealthMetricType } from '@/types'
+import { getDeviceListApi, getDeviceTrackApi, type DeviceJoined } from '@/api/modules/device'
+import { getHealthSummaryApi, type HealthSummary } from '@/api/modules/health'
+import { getFencesApi, type PetFence } from '@/api/modules/fence'
+import { getExerciseSummaryApi, type ExerciseState } from '@/api/modules/exercise'
+import Amap from '@/components/Amap.vue'
+import { SPECIES_ICON } from '@/utils/consts'
 
+const router = useRouter()
 const { t } = useI18n()
 
-const METRICS: { key: HealthMetricType; labelKey: string; unitKey: string; color: string }[] = [
-  { key: 'temperature', labelKey: 'user.health.temperature', unitKey: 'user.health.degreeC', color: '#ff9f43' },
-  { key: 'heartRate', labelKey: 'user.health.heartRate', unitKey: 'user.health.bpm', color: '#ff6b6b' },
-  { key: 'spo2', labelKey: 'user.health.spo2', unitKey: 'user.health.percent', color: '#00b4a6' },
-  { key: 'respiratoryRate', labelKey: 'user.health.respiratory', unitKey: 'user.health.bpm', color: '#5b8ff9' },
+const METRICS: { key: string; labelKey: string; unitKey: string; color: string; getValue: (s: HealthSummary) => number | string }[] = [
+  { key: 'temperature', labelKey: 'user.health.temperature', unitKey: 'user.health.degreeC', color: '#ff9f43', getValue: (s) => s.temperature.latest + '°' },
+  { key: 'heartRate', labelKey: 'user.health.heartRate', unitKey: 'user.health.bpm', color: '#ff6b6b', getValue: (s) => s.heartRate.latest },
+  { key: 'spo2', labelKey: 'user.health.spo2', unitKey: 'user.health.percent', color: '#00b4a6', getValue: (s) => s.spo2.latest + '%' },
+  { key: 'respiratoryRate', labelKey: 'user.health.respiratory', unitKey: 'user.health.bpm', color: '#5b8ff9', getValue: (s) => s.respiratoryRate.latest },
+]
+
+const EXERCISE_METRICS = [
+  { key: 'stepFreq', labelKey: 'user.health.stepFreq', unitKey: 'user.health.stepFreqUnit', icon: '👟' },
+  { key: 'stride', labelKey: 'user.health.stride', unitKey: 'user.health.strideUnit', icon: '📏' },
+  { key: 'gait', labelKey: 'user.health.gait', unitKey: '', icon: '🚶' },
+  { key: 'speed', labelKey: 'user.health.speed', unitKey: 'user.health.speedUnit', icon: '⚡' },
 ]
 
 const pets = ref<PetJoined[]>([])
-const activePet = ref<PetJoined | null>(null)
 const activeIndex = ref(0)
+const devices = ref<DeviceJoined[]>([])
 const summary = ref<HealthSummary | null>(null)
-const metricKey = ref<HealthMetricType>('heartRate')
-const range = ref<'1d' | '7d'>('1d')
-const chartPoints = ref<{ ts: number; value: number }[]>([])
-const chartUnit = ref('')
-const chartRange = ref<{ min: number; max: number; unit: string } | null>(null)
+const track = ref<{ points: { lat: number; lng: number; ts: number }[]; center: { lat: number; lng: number } } | null>(null)
+const fences = ref<PetFence[]>([])
+const exercise = ref<ExerciseState | null>(null)
 const loading = ref(false)
 
-const activeMetric = METRICS.find((m) => m.key === metricKey.value) ?? METRICS[0]
-
-async function loadPets() {
-  try {
-    pets.value = await getMyPetsApi()
-    if (pets.value.length) {
-      activePet.value = pets.value[0]
-      await loadAll()
-    }
-  } catch (e) {
-    showToast((e as Error).message || t('common.loadFailed'))
-  }
-}
+const activePet = computed(() => pets.value[activeIndex.value] ?? null)
+const activeDevice = computed(() => devices.value.find((d) => d.boundPetId === activePet.value?.id) ?? null)
 
 async function loadAll() {
-  if (!activePet.value) return
   loading.value = true
   try {
-    const [sum, series] = await Promise.all([
-      getHealthSummaryApi(activePet.value.id),
-      getHealthSeriesApi(activePet.value.id, metricKey.value, range.value === '7d' ? 7 : 1),
+    const [petList, devList] = await Promise.all([
+      getMyPetsApi(),
+      getDeviceListApi(),
     ])
-    summary.value = sum
-    chartPoints.value = series.points
-    chartUnit.value = series.unit
-    chartRange.value = series.range
+    pets.value = petList
+    devices.value = devList
+
+    if (pets.value.length) {
+      await loadPetData()
+    }
   } catch (e) {
     showToast((e as Error).message || t('common.loadFailed'))
   } finally {
@@ -60,163 +60,465 @@ async function loadAll() {
   }
 }
 
-function onPetChange(index: number) {
-  activePet.value = pets.value[index] ?? null
-  summary.value = null
-  if (activePet.value) loadAll().catch(() => undefined)
+async function loadPetData() {
+  const pet = activePet.value
+  if (!pet) return
+
+  const device = activeDevice.value
+  const tasks: Promise<unknown>[] = [
+    getHealthSummaryApi(pet.id).then((s) => { summary.value = s }).catch(() => { summary.value = null }),
+    getFencesApi(pet.id).then((f) => { fences.value = f }).catch(() => { fences.value = [] }),
+    getExerciseSummaryApi(pet.id).then((e) => { exercise.value = e }).catch(() => { exercise.value = null }),
+  ]
+
+  if (device) {
+    tasks.push(
+      getDeviceTrackApi(device.id).then((t) => { track.value = t }).catch(() => { track.value = null }),
+    )
+  } else {
+    track.value = null
+  }
+
+  await Promise.all(tasks)
 }
 
-watch([metricKey, range], () => {
-  if (activePet.value) loadAll().catch(() => undefined)
-})
+function onPetSelect(index: number) {
+  activeIndex.value = index
+  summary.value = null
+  track.value = null
+  fences.value = []
+  exercise.value = null
+  loadPetData()
+}
 
-loadPets()
+function goTrend(metricType: string) {
+  const pet = activePet.value
+  if (!pet) return
+  router.push(`/user/health/trend/${pet.id}/${metricType}`)
+}
+
+function goFenceManage() {
+  const pet = activePet.value
+  if (!pet) return
+  router.push(`/user/health/fence/${pet.id}`)
+}
+
+function getGaitLabel(gait: string): string {
+  const key = `user.health.gaitTypes.${gait}` as any
+  return t(key) || gait
+}
+
+loadAll()
 </script>
 
 <template>
-  <div class="health">
-    <!-- 宠物切换 -->
-    <van-tabs v-if="pets.length > 1" v-model:active="activeIndex" color="#ff6b00" class="pet-tabs" @change="onPetChange">
-      <van-tab v-for="p in pets" :key="p.id" :title="p.name" />
-    </van-tabs>
+  <div class="monitor-page">
+    <!-- 全屏地图 -->
+    <Amap
+      v-if="track"
+      :points="track.points"
+      :center="activeDevice?.geofence?.center ?? track.center"
+      :radius="activeDevice?.geofence?.radius ?? 500"
+      :show-fence="false"
+      :fences="fences"
+      fullscreen
+    />
+    <!-- 无轨迹时仍展示地图（仅围栏） -->
+    <Amap
+      v-else
+      :points="[]"
+      :center="null"
+      :show-fence="false"
+      :fences="fences"
+      fullscreen
+    />
 
-    <van-skeleton :loading="loading && !summary" :row="4" class="mt-8" />
+    <!-- 宠物切换标签（距顶部 100px） -->
+    <div v-if="pets.length" class="pet-tabs-bar">
+      <div
+        v-for="(pet, index) in pets"
+        :key="pet.id"
+        class="pet-tab"
+        :class="{ 'pet-tab--active': index === activeIndex }"
+        @click="onPetSelect(index)"
+      >
+        <img class="pet-tab-avatar" :src="pet.avatar" :alt="pet.name" />
+        <span v-if="index === activeIndex" class="pet-tab-name">{{ pet.name }}</span>
+      </div>
+    </div>
 
-    <template v-if="summary && activePet">
-      <!-- 实时指标卡片 -->
-      <div class="metric-cards">
-        <div class="metric-card sp-card">
-          <div class="metric-value" style="color: #ff9f43">{{ summary.temperature.latest }}°</div>
-          <div class="metric-label">{{ t('user.health.temperature') }} {{ t('user.health.degreeC') }}</div>
-          <div class="metric-sub">{{ t('user.health.avgValue') }} {{ summary.temperature.avg }}°</div>
-        </div>
-        <div class="metric-card sp-card">
-          <div class="metric-value" style="color: #ff6b6b">{{ summary.heartRate.latest }}</div>
-          <div class="metric-label">{{ t('user.health.heartRate') }} {{ t('user.health.bpm') }}</div>
-          <div class="metric-sub">{{ t('user.health.todayAvg') }} {{ summary.heartRate.avg }}</div>
-        </div>
-        <div class="metric-card sp-card">
-          <div class="metric-value" style="color: #00b4a6">{{ summary.spo2.latest }}</div>
-          <div class="metric-label">{{ t('user.health.spo2') }} {{ t('user.health.percent') }}</div>
-          <div class="metric-sub">{{ t('user.health.avgValue') }} {{ summary.spo2.avg }}</div>
-        </div>
-        <div class="metric-card sp-card">
-          <div class="metric-value" style="color: #5b8ff9">{{ summary.respiratoryRate.latest }}</div>
-          <div class="metric-label">{{ t('user.health.respiratory') }} {{ t('user.health.bpm') }}</div>
-          <div class="metric-sub">{{ t('user.health.avgValue') }} {{ summary.respiratoryRate.avg }}</div>
+    <!-- 底部信息面板（1/3 屏） -->
+    <div v-if="activePet" class="info-panel">
+      <!-- 拉手 -->
+      <div class="panel-handle">
+        <div class="handle-bar" />
+      </div>
+
+      <!-- 宠物头部信息 -->
+      <div class="panel-pet-header">
+        <img class="panel-avatar" :src="activePet.avatar" :alt="activePet.name" />
+        <div class="panel-pet-info">
+          <div class="panel-pet-name">
+            {{ SPECIES_ICON[activePet.species] }} {{ activePet.name }}
+          </div>
+          <div class="panel-pet-pos">
+            <span class="pos-dot" />
+            {{ track ? `${track.center.lat.toFixed(4)}, ${track.center.lng.toFixed(4)}` : t('user.health.positionLoading') }}
+          </div>
         </div>
       </div>
 
-      <!-- 指标选择与范围 -->
-      <div class="chart-card sp-card mt-16">
-        <div class="chart-head">
-          <van-radio-group v-model="range" direction="horizontal" class="range-toggle">
-            <van-radio name="1d" icon-size="14px">{{ t('common.today') }}</van-radio>
-            <van-radio name="7d" icon-size="14px">{{ t('common.week7') }}</van-radio>
-          </van-radio-group>
-        </div>
-        <div class="metric-chips">
+      <div class="panel-body">
+        <!-- 健康指标 -->
+        <div class="section-title">{{ t('user.home.healthOverview') }}</div>
+        <div class="metric-grid">
           <div
             v-for="m in METRICS"
             :key="m.key"
-            class="metric-chip"
-            :class="{ active: metricKey === m.key }"
-            :style="metricKey === m.key ? { background: m.color, color: '#fff' } : {}"
-            @click="metricKey = m.key"
+            class="metric-item"
+            :style="{ '--metric-color': m.color }"
+            @click="goTrend(m.key)"
           >
-            {{ t(m.labelKey) }}
+            <div class="metric-item-value" :style="{ color: m.color }">
+              {{ summary ? m.getValue(summary) : '--' }}
+            </div>
+            <div class="metric-item-label">{{ t(m.labelKey) }}</div>
+            <div class="metric-item-unit">{{ t(m.unitKey) }}</div>
           </div>
         </div>
-        <div class="chart-title">
-          {{ t(activeMetric.labelKey) }}{{ t('user.health.trend') }}
-          <span class="chart-sub">24h · {{ t(activeMetric.unitKey) }}</span>
-        </div>
-        <VitalChart
-          :points="chartPoints"
-          :unit="chartUnit"
-          :color="activeMetric.color"
-          :range="chartRange"
-          :name="t(activeMetric.labelKey)"
-          height="230px"
-        />
-      </div>
-    </template>
 
-    <van-empty v-else-if="!loading && !pets.length" :description="t('user.health.noDevice')" />
+        <!-- 运动指标 -->
+        <div class="section-title section-title--mt">{{ t('user.health.exercise') }}</div>
+        <div class="exercise-row">
+          <div
+            v-for="em in EXERCISE_METRICS"
+            :key="em.key"
+            class="exercise-item"
+            @click="goTrend('exercise')"
+          >
+            <span class="exercise-icon">{{ em.icon }}</span>
+            <div class="exercise-info">
+              <div class="exercise-value">
+                <template v-if="exercise">
+                  <template v-if="em.key === 'gait'">{{ getGaitLabel(exercise.gait) }}</template>
+                  <template v-else-if="em.key === 'stepFreq'">{{ exercise.stepFreq }}</template>
+                  <template v-else-if="em.key === 'stride'">{{ exercise.stride }}</template>
+                  <template v-else-if="em.key === 'speed'">{{ exercise.speed }}</template>
+                </template>
+                <template v-else>--</template>
+              </div>
+              <div class="exercise-label">{{ t(em.labelKey) }}</div>
+              <div v-if="em.unitKey" class="exercise-unit">{{ t(em.unitKey) }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 围栏管理入口 -->
+        <div class="fence-entry" @click="goFenceManage">
+          <div class="fence-entry-left">
+            <span class="fence-entry-icon">📍</span>
+            <span class="fence-entry-text">{{ t('user.health.manageFence') }}</span>
+          </div>
+          <div class="fence-entry-right">
+            <span v-if="fences.length" class="fence-badge">{{ t('user.health.fenceCount', { n: fences.length }) }}</span>
+            <van-icon name="arrow" size="14" color="#999" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 加载/空状态 -->
+    <div v-if="!loading && !pets.length" class="monitor-empty">
+      <van-empty :description="t('user.health.noDevice')" />
+    </div>
   </div>
 </template>
 
 <style scoped lang="scss">
-.health {
-  padding: 16px 14px;
-  padding-top: 0;
+.monitor-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
 }
-.pet-tabs {
-  margin-bottom: 12px;
-  :deep(.van-tabs__wrap) {
-    background: #fff;
-    border-radius: 12px;
+
+/* ===== 宠物切换标签（距顶部 100px） ===== */
+.pet-tabs-bar {
+  position: absolute;
+  top: 100px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  z-index: 10;
+  padding: 0 16px;
+  pointer-events: none;
+
+  .pet-tab {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px 6px 6px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    transition: all 0.25s;
+
+    .pet-tab-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: #eef1f5;
+    }
+
+    .pet-tab-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      white-space: nowrap;
+    }
+
+    &--active {
+      background: rgba(255, 255, 255, 0.98);
+      box-shadow: 0 4px 20px rgba(255, 107, 0, 0.25);
+      .pet-tab-avatar {
+        border-color: var(--sp-primary, #ff6b00);
+      }
+    }
   }
 }
-.metric-cards {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  .metric-card {
-    padding: 14px;
-    .metric-value {
-      font-size: 22px;
-      font-weight: 800;
+
+/* ===== 底部信息面板 ===== */
+.info-panel {
+  position: absolute;
+  bottom: 50px; /* above tabbar */
+  left: 0;
+  right: 0;
+  max-height: 36%;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.panel-handle {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 2px;
+  .handle-bar {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: #d4dae2;
+  }
+}
+
+.panel-pet-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px 10px;
+  border-bottom: 1px solid #f0f3f8;
+
+  .panel-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--sp-primary-light);
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #eef1f5;
+  }
+
+  .panel-pet-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  .panel-pet-pos {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--sp-text-placeholder);
+    margin-top: 2px;
+
+    .pos-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #4cd964;
+      flex-shrink: 0;
     }
-    .metric-label {
-      margin-top: 4px;
-      font-size: 12px;
+  }
+}
+
+.panel-body {
+  padding: 10px 16px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 8px;
+
+  &--mt {
+    margin-top: 12px;
+  }
+}
+
+/* 健康指标 2x2 网格 */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+
+  .metric-item {
+    text-align: center;
+    padding: 8px 4px;
+    border-radius: 12px;
+    background: #f7f9fc;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+
+    &:active {
+      transform: scale(0.96);
+      background: #eef2f8;
+    }
+
+    .metric-item-value {
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .metric-item-label {
+      font-size: 10px;
+      color: var(--sp-text-secondary);
+      margin-top: 2px;
+    }
+    .metric-item-unit {
+      font-size: 9px;
+      color: var(--sp-text-placeholder);
+    }
+
+    /* 点击提示箭头 */
+    &::after {
+      content: '';
+      position: absolute;
+      right: 4px;
+      top: 4px;
+      width: 0;
+      height: 0;
+      border-left: 3px solid var(--metric-color, #ff6b00);
+      border-bottom: 3px solid transparent;
+      border-top: 3px solid transparent;
+      opacity: 0.4;
+    }
+  }
+}
+
+/* 运动指标行 */
+.exercise-row {
+  display: flex;
+  gap: 8px;
+
+  .exercise-item {
+    flex: 1;
+    padding: 8px 6px;
+    border-radius: 12px;
+    background: #f7f9fc;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+
+    &:active {
+      transform: scale(0.96);
+    }
+
+    .exercise-icon {
+      font-size: 16px;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .exercise-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: #333;
+    }
+    .exercise-label {
+      font-size: 10px;
       color: var(--sp-text-secondary);
     }
-    .metric-sub {
-      margin-top: 4px;
-      font-size: 11px;
+    .exercise-unit {
+      font-size: 9px;
       color: var(--sp-text-placeholder);
     }
   }
 }
-.chart-card {
-  padding: 14px;
-}
-.chart-head {
-  margin-bottom: 10px;
-  :deep(.van-radio-group) {
+
+/* 围栏管理入口 */
+.fence-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #fff7f0, #fff);
+  border: 1px solid #fde8d5;
+  border-radius: 12px;
+  cursor: pointer;
+
+  .fence-entry-left {
     display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    .van-radio__label {
-      font-size: 13px;
+    align-items: center;
+    gap: 8px;
+    .fence-entry-icon {
+      font-size: 18px;
+    }
+    .fence-entry-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+    }
+  }
+
+  .fence-entry-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    .fence-badge {
+      font-size: 11px;
+      color: var(--sp-primary);
+      background: #fff0e5;
+      padding: 2px 8px;
+      border-radius: 10px;
     }
   }
 }
-.metric-chips {
+
+.monitor-empty {
+  position: absolute;
+  inset: 0;
   display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 6px;
-  .metric-chip {
-    flex-shrink: 0;
-    padding: 6px 14px;
-    border-radius: 16px;
-    font-size: 13px;
-    background: #f0f3f8;
-    color: var(--sp-text-secondary);
-    cursor: pointer;
-  }
-}
-.chart-title {
-  margin: 10px 0 6px;
-  font-size: 15px;
-  font-weight: 700;
-  .chart-sub {
-    font-size: 11px;
-    font-weight: 400;
-    color: var(--sp-text-placeholder);
-  }
+  align-items: center;
+  justify-content: center;
+  background: var(--sp-bg);
 }
 </style>

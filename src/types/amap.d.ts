@@ -1,20 +1,34 @@
 /**
  * 高德地图 JS API v2.0 类型声明（仅项目用到的 API）
+ * 路由 meta 扩展
  */
 
-/** 高德地图 Loader 全局对象 */
-interface Window {
-  AMapLoader: {
-    load(options: { key: string; version: string; plugins?: string[] }): Promise<void>
+import 'vue-router'
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    hideNavbar?: boolean
   }
-  _AMapSecurityConfig?: {
-    securityJsCode?: string
-    serviceHost?: string
-  }
-  __amap_sdk_ready?: boolean
 }
 
-declare namespace AMap {
+/** 高德地图 Loader 全局对象 */
+declare global {
+  interface Window {
+    AMapLoader: {
+      load(options: { key: string; version: string; plugins?: string[] }): Promise<void>
+    }
+    _AMapSecurityConfig?: {
+      securityJsCode?: string
+      serviceHost?: string
+    }
+    __amap_sdk_ready?: boolean
+  }
+}
+
+export {}
+
+declare global {
+  namespace AMap {
   /** 经纬度 */
   interface LngLat {
     lng: number
@@ -149,4 +163,5 @@ declare namespace AMap {
     open(map: Map, pos?: [number, number]): void
     close(): void
   }
+}
 }

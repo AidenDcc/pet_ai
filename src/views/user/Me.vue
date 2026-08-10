@@ -5,7 +5,6 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { getMySubscriptionApi } from '@/api/modules/order'
 import { ROLE_LABEL } from '@/utils/consts'
-import { formatDate } from '@/utils/format'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -37,20 +36,13 @@ load()
       <div class="user-info">
         <div class="user-name">{{ auth.user?.name }}</div>
         <div class="user-phone">{{ auth.user?.phone }}</div>
-        <van-tag round type="primary" class="mt-8">{{ t(ROLE_LABEL.user) }}</van-tag>
+        <div class="user-tags mt-8">
+          <van-tag round type="primary">{{ t(ROLE_LABEL.user) }}</van-tag>
+          <van-tag v-if="subscription?.plan?.name" round :style="{ color: subscription.plan.color, background: subscription.plan.color + '18', borderColor: subscription.plan.color }">
+            {{ subscription.plan.name }}
+          </van-tag>
+        </div>
       </div>
-    </div>
-
-    <!-- 当前订阅 -->
-    <div v-if="subscription" class="plan-card sp-card mt-16" :style="{ borderColor: subscription.plan?.color }">
-      <div class="plan-badge" :style="{ background: subscription.plan?.color }">
-        {{ subscription.plan?.name }}
-      </div>
-      <div class="plan-info">
-        <div class="plan-title">{{ t('user.me.currentPlan') }} · {{ subscription.plan?.name ?? t('user.me.noPlan') }}</div>
-        <div class="plan-sub">{{ t('user.me.expiresAt') }} {{ subscription.expireAt ? formatDate(subscription.expireAt) : '-' }}</div>
-      </div>
-      <van-button size="small" round type="primary" @click="router.push('/user/subscription')">{{ t('common.manage') }}</van-button>
     </div>
 
     <!-- 功能菜单 -->
@@ -98,31 +90,10 @@ load()
     font-size: 13px;
     color: var(--sp-text-secondary);
   }
-}
-.plan-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border: 2px solid var(--sp-border);
-  .plan-badge {
-    color: #fff;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 8px 12px;
-    border-radius: 10px;
-  }
-  .plan-info {
-    flex: 1;
-    .plan-title {
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .plan-sub {
-      margin-top: 4px;
-      font-size: 12px;
-      color: var(--sp-text-secondary);
-    }
+  .user-tags {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 }
 .menu {

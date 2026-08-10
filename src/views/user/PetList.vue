@@ -58,14 +58,6 @@ load()
 
 <template>
   <div class="pet-list">
-    <van-nav-bar
-      :title="t('user.petList.title')"
-      fixed
-      placeholder
-      left-arrow
-      @click-left="router.back"
-    />
-
     <!-- 数量统计 -->
     <div v-if="pets.length" class="total-row">
       {{ t('user.petList.total', { n: pets.length }) }}

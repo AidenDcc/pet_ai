@@ -34,7 +34,19 @@ export const userRoutes: RouteRecordRaw[] = [
         path: 'health',
         name: 'user-health',
         component: () => import('@/views/user/Health.vue'),
-        meta: { titleKey: 'nav.healthMonitor', tabbar: true },
+        meta: { titleKey: 'nav.healthMonitor', tabbar: true, hideNavbar: true },
+      },
+      {
+        path: 'health/trend/:petId/:metricType',
+        name: 'user-health-trend',
+        component: () => import('@/views/user/MetricTrend.vue'),
+        meta: { titleKey: 'user.health.trendTitle' },
+      },
+      {
+        path: 'health/fence/:petId',
+        name: 'user-health-fence',
+        component: () => import('@/views/user/FenceManage.vue'),
+        meta: { titleKey: 'user.health.fenceManage' },
       },
       {
         path: 'location',

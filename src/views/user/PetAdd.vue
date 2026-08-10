@@ -74,14 +74,6 @@ async function doSave() {
 
 <template>
   <div class="pet-add">
-    <van-nav-bar
-      :title="t('user.petAdd.title')"
-      fixed
-      placeholder
-      left-arrow
-      @click-left="router.back"
-    />
-
     <div class="form sp-card mt-16 mx-14">
       <van-field
         v-model="form.name"

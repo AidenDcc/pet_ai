@@ -2,6 +2,12 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 
 /** 手机外壳：华为 Mate80 风格 — 居中挖孔屏 + 曲面屏边框，slot 内为 APP 屏幕内容 */
+withDefaults(defineProps<{
+  transparentStatus?: boolean
+}>(), {
+  transparentStatus: false,
+})
+
 const clock = ref('')
 let timer: number | undefined
 
@@ -34,7 +40,7 @@ onBeforeUnmount(() => {
       <div class="phone-punch-hole"></div>
 
       <!-- 状态栏：时间 + 信号图标 -->
-      <div class="phone-statusbar">
+      <div class="phone-statusbar" :class="{ 'statusbar--transparent': transparentStatus }">
         <span class="sb-time">{{ clock }}</span>
         <span class="sb-icons">
           <span class="sb-signal">▂▄▆█</span>
@@ -143,6 +149,27 @@ onBeforeUnmount(() => {
   font-weight: 600;
   color: #fff;
   background: var(--sp-primary);
+  transition: background 0.3s;
+
+  &.statusbar--transparent {
+    background: transparent;
+    color: #333;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    .sb-signal,
+    .sb-battery .battery-icon {
+      border-color: #333;
+    }
+    .sb-battery .battery-icon::after {
+      background: #333;
+    }
+    .battery-fill {
+      background: #333;
+    }
+  }
 
   .sb-icons {
     display: flex;

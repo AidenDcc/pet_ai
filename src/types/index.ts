@@ -42,6 +42,35 @@ export interface Geofence {
   enabled: boolean
 }
 
+/** 宠物级电子围栏（可多个） */
+export interface PetFence {
+  id: string
+  petId: string
+  name: string
+  center: { lat: number; lng: number }
+  radius: number
+  enabled: boolean
+  createdAt: number
+}
+
+/** 运动实时状态 */
+export interface ExerciseState {
+  stepFreq: number       // 步频 步/分
+  stride: number         // 步幅 cm
+  gait: 'trot' | 'walk' | 'run' | 'rest'
+  speed: number          // 速度 m/s
+  updatedAt: number
+}
+
+/** 运动趋势数据点 */
+export interface ExercisePoint {
+  ts: number
+  stepFreq: number
+  stride: number
+  speed: number
+  gait: 'trot' | 'walk' | 'run' | 'rest'
+}
+
 /** Pet-S1 智能项圈设备 */
 export interface DeviceInfo {
   id: string
