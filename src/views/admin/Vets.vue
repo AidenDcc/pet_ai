@@ -47,6 +47,15 @@ async function review(vet: VetInfo, action: 'approve' | 'reject') {
   await load()
 }
 
+// 详情
+const detailVisible = ref(false)
+const detailRow = ref<VetInfo | null>(null)
+
+function openDetail(row: VetInfo) {
+  detailRow.value = row
+  detailVisible.value = true
+}
+
 onMounted(load)
 </script>
 
@@ -87,8 +96,9 @@ onMounted(load)
             <el-tag size="small" :type="CERT_STATUS[row.certStatus].tag">{{ t(CERT_STATUS[row.certStatus].labelKey) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column :label="t('common.action')" width="160">
+        <el-table-column :label="t('common.action')" width="230" fixed="right">
           <template #default="{ row }">
+            <el-button size="small" type="primary" link @click="openDetail(row as VetInfo)">{{ t('admin.common.viewDetail') }}</el-button>
             <template v-if="row.certStatus === 'pending'">
               <el-button size="small" type="success" @click="review(row as VetInfo, 'approve')">{{ t('admin.common.approve') }}</el-button>
               <el-button size="small" type="danger" plain @click="review(row as VetInfo, 'reject')">{{ t('admin.common.reject') }}</el-button>
@@ -111,6 +121,43 @@ onMounted(load)
         />
       </div>
     </el-card>
+
+    <el-dialog v-model="detailVisible" :title="t('admin.common.viewDetail')" width="560px" destroy-on-close>
+      <el-descriptions v-if="detailRow" :column="2" border>
+        <el-descriptions-item :label="t('admin.vets.detail.id')">
+          {{ detailRow.id }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('role.doctor')">
+          <div class="flex gap-8">
+            <el-avatar :src="detailRow.avatar" :size="28" />
+            <div>
+              <div class="fw-600">{{ detailRow.name }}</div>
+              <div class="text-secondary fs-12">{{ detailRow.title }}</div>
+            </div>
+          </div>
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.hospital')">
+          {{ detailRow.hospital }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.specialty')">
+          {{ detailRow.specialty || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.phone')">
+          {{ detailRow.phone }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.certStatus')">
+          <el-tag size="small" :type="CERT_STATUS[detailRow.certStatus].tag">
+            {{ t(CERT_STATUS[detailRow.certStatus].labelKey) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.petCount')">
+          {{ detailRow.petIds.length }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.title')">
+          {{ detailRow.title || '-' }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
   </div>
 </template>
 

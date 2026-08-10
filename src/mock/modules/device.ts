@@ -1,5 +1,5 @@
 import type { DeviceInfo, UploadRecord } from '@/types'
-import { defineMock, MockError, requireUser } from '../helper'
+import { defineMock, MockError, requireUser, mockAddress } from '../helper'
 import { devices, pets, findDeviceById, findDeviceBySn, findPetById, tracks, telemetry, uploadLogs, pushUpload } from '../db'
 
 export interface DeviceJoined extends DeviceInfo {
@@ -164,7 +164,8 @@ defineMock([
       if (!device) throw new MockError('设备不存在', 404)
       const petId = device.boundPetId
       if (!petId || !tracks[petId]) throw new MockError('暂无轨迹数据', 404)
-      return { petId, points: tracks[petId], center: device.geofence?.center ?? tracks[petId][tracks[petId].length - 1] }
+      const center = device.geofence?.center ?? tracks[petId][tracks[petId].length - 1]
+      return { petId, points: tracks[petId], center, address: mockAddress(center.lat, center.lng) }
     },
   },
   // 实时生命体征流

@@ -6,7 +6,9 @@ import { showToast } from 'vant'
 import dayjs from 'dayjs'
 import { getHealthSeriesApi } from '@/api/modules/health'
 import { getExerciseSeriesApi } from '@/api/modules/exercise'
+import { getPetApi, type PetJoined } from '@/api/modules/pet'
 import VitalChart from '@/components/VitalChart.vue'
+import { SPECIES_ICON, SPECIES_LABEL } from '@/utils/consts'
 import type { HealthMetricType, ExercisePoint } from '@/types'
 
 const route = useRoute()
@@ -43,6 +45,17 @@ const chartUnit = ref('')
 const exerciseSubKey = ref<'stepFreq' | 'stride' | 'speed'>('stepFreq')
 const exercisePoints = ref<ExercisePoint[]>([])
 const loading = ref(false)
+
+/** 当前宠物信息（昵称/头像等） */
+const pet = ref<PetJoined | null>(null)
+
+async function loadPet() {
+  try {
+    pet.value = await getPetApi(petId.value)
+  } catch {
+    pet.value = null
+  }
+}
 
 const dateDisplay = computed(() => {
   if (mode.value === 'day') return dayjs(selectedDate.value).format('YYYY-MM-DD')
@@ -105,10 +118,21 @@ function onExerciseSubChange(key: string) {
 watch([metricType, mode, selectedDate, exerciseSubKey], () => {
   loadData()
 }, { immediate: true })
+
+watch(petId, loadPet, { immediate: true })
 </script>
 
 <template>
   <div class="metric-trend">
+    <!-- 宠物信息（昵称/头像等） -->
+    <div v-if="pet" class="pet-header sp-card">
+      <van-image round class="pet-header-avatar" :src="pet.avatar" fit="cover" />
+      <div class="pet-header-info">
+        <div class="pet-header-name">{{ SPECIES_ICON[pet.species] }} {{ pet.name }}</div>
+        <div class="pet-header-meta">{{ t(SPECIES_LABEL[pet.species]) }} · {{ pet.breed }}</div>
+      </div>
+    </div>
+
     <!-- 指标标题 -->
     <div class="trend-header">
       <span class="trend-title" :style="{ color: activeMetric.color }">
@@ -185,6 +209,40 @@ watch([metricType, mode, selectedDate, exerciseSubKey], () => {
 <style scoped lang="scss">
 .metric-trend {
   padding: 0 14px 90px;
+}
+
+/* 宠物信息卡片 */
+.pet-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-top: 12px;
+
+  .pet-header-avatar {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+  }
+
+  .pet-header-info {
+    min-width: 0;
+  }
+
+  .pet-header-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: #333;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .pet-header-meta {
+    font-size: 12px;
+    color: var(--sp-text-secondary);
+    margin-top: 2px;
+  }
 }
 
 .trend-header {

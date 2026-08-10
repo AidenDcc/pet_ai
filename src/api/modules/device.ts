@@ -55,7 +55,7 @@ export function updateGeofenceApi(data: {
 }
 
 export function getDeviceTrackApi(id: string) {
-  return request.get<unknown, { petId: string; points: GeoPoint[]; center: { lat: number; lng: number } }>(
+  return request.get<unknown, { petId: string; points: GeoPoint[]; center: { lat: number; lng: number }; address: string }>(
     `/device/${id}/track`,
   )
 }

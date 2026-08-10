@@ -17,6 +17,10 @@ const props = withDefaults(
     showTrack?: boolean
     fences?: PetFence[]
     fullscreen?: boolean
+    /** 选中心点模式：点击地图触发 pick-center */
+    pickMode?: boolean
+    /** 已选中心点标记（独立于宠物标记，父组件控制） */
+    pickMarker?: Point | null
   }>(),
   {
     points: () => [],
@@ -26,8 +30,12 @@ const props = withDefaults(
     showTrack: true,
     fences: () => [],
     fullscreen: false,
+    pickMode: false,
+    pickMarker: null,
   },
 )
+
+const emit = defineEmits<{ (e: 'pick-center', pos: { lat: number; lng: number }): void }>()
 
 // 从环境变量读取（在项目根目录 .env.local 配置），避免硬编码与泄露
 const AMAP_KEY = import.meta.env.VITE_AMAP_KEY ?? ''
@@ -42,6 +50,7 @@ let fenceCircle: AMap.Circle | null = null
 let petMarker: AMap.Marker | null = null
 let trackMarkers: AMap.Marker[] = []
 let fenceOverlays: (AMap.Circle | AMap.Marker)[] = []
+let pickMarkerOverlay: AMap.Marker | null = null
 
 /** —— SDK 动态加载（AMapLoader 官方方式）—— */
 // 高德 JS API v2.0 要求整页只调用一次 AMapLoader.load()，
@@ -147,8 +156,39 @@ function initMap() {
 
     mapReady.value = true
     drawAll()
+    // 选中心点：点击地图（pickMode 时对外触发 pick-center）
+    map.on('click', onMapClick)
   } catch (e) {
     loadError.value = '地图初始化失败: ' + (e as Error).message
+  }
+}
+
+/** 地图点击：仅在 pickMode 下生效，把点击经纬度抛给父组件 */
+function onMapClick(e: { lnglat: { lat: number; lng: number } }) {
+  if (!props.pickMode) return
+  emit('pick-center', { lat: e.lnglat.lat, lng: e.lnglat.lng })
+}
+
+/** 绘制/更新「已选中心点」标记 */
+function updatePickMarker() {
+  if (!map) return
+  if (pickMarkerOverlay) {
+    pickMarkerOverlay.setMap(null)
+    pickMarkerOverlay = null
+  }
+  const p = props.pickMarker
+  if (p) {
+    pickMarkerOverlay = new AMap.Marker({
+      position: [p.lng, p.lat],
+      content:
+        '<div style="position:relative;width:34px;height:34px;">' +
+        '<div style="position:absolute;inset:-5px;border-radius:50%;background:rgba(0,180,166,0.22);animation:pet-pulse 1.4s infinite;"></div>' +
+        '<div style="position:absolute;inset:0;border-radius:50%;background:#00b4a6;display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;box-shadow:0 2px 8px rgba(0,180,166,0.45);">📍</div>' +
+        '</div>',
+      offset: new AMap.Pixel(-17, -17),
+      zIndex: 26,
+    })
+    pickMarkerOverlay.setMap(map)
   }
 }
 
@@ -156,6 +196,7 @@ function clearOverlays() {
   if (trackLine) { trackLine.setMap(null); trackLine = null }
   if (fenceCircle) { fenceCircle.setMap(null); fenceCircle = null }
   if (petMarker) { petMarker.setMap(null); petMarker = null }
+  if (pickMarkerOverlay) { pickMarkerOverlay.setMap(null); pickMarkerOverlay = null }
   trackMarkers.forEach((m) => m.setMap(null))
   trackMarkers = []
   fenceOverlays.forEach((o) => o.setMap(null))
@@ -264,6 +305,7 @@ function drawAll() {
     petMarker.setMap(map)
   }
 
+  updatePickMarker()
   fitView()
 }
 
@@ -312,10 +354,12 @@ watch(
   },
   { deep: true },
 )
+
+watch(() => props.pickMarker, updatePickMarker)
 </script>
 
 <template>
-  <div class="amap-wrap" :class="{ 'amap-wrap--fullscreen': fullscreen }">
+  <div class="amap-wrap" :class="{ 'amap-wrap--fullscreen': fullscreen, 'amap-wrap--picking': pickMode }">
     <div ref="containerRef" class="amap-container" />
 
     <!-- 加载中 -->
@@ -336,6 +380,10 @@ watch(
 <style scoped>
 .amap-wrap {
   position: relative;
+  /* 创建独立层叠上下文：高德内部 Logo/版权 z-index 极高（10 万级），
+     若不加隔离会溢出盖住页面导航（状态栏/宠物切换/底部面板/底部栏），
+     z-index: 0 将其封闭在本容器内，使上层 UI 始终显示在地图之上 */
+  z-index: 0;
   width: 100%;
   height: 320px;
   border-radius: 14px;
@@ -355,6 +403,11 @@ watch(
 .amap-container {
   width: 100%;
   height: 100%;
+}
+
+/* 选中心点模式下十字光标 */
+.amap-wrap--picking .amap-container {
+  cursor: crosshair;
 }
 
 .amap-loading {

@@ -14,17 +14,33 @@ const auth = useAuthStore()
 const { t } = useI18n()
 const i18nStore = useI18nStore()
 
-const MENUS: Record<string, { path: string; titleKey: string; icon: string }[]> = {
+interface AdminMenuLeaf { path: string; titleKey: string; icon: string }
+interface AdminMenuGroup { titleKey: string; icon: string; children: AdminMenuLeaf[] }
+type AdminMenuNode = AdminMenuLeaf | AdminMenuGroup
+
+const MENUS: Record<string, AdminMenuNode[]> = {
   admin: [
     { path: '/admin/dashboard', titleKey: 'nav.admin.dashboard', icon: 'TrendCharts' },
     { path: '/admin/bi', titleKey: 'nav.admin.bi', icon: 'DataAnalysis' },
-    { path: '/admin/i18n', titleKey: 'nav.admin.i18n', icon: 'Connection' },
     { path: '/admin/devices', titleKey: 'nav.admin.devices', icon: 'Monitor' },
     { path: '/admin/users', titleKey: 'nav.admin.users', icon: 'User' },
     { path: '/admin/pets', titleKey: 'nav.admin.pets', icon: 'Coin' },
     { path: '/admin/vets', titleKey: 'nav.admin.vets', icon: 'FirstAidKit' },
     { path: '/admin/orders', titleKey: 'nav.admin.orders', icon: 'List' },
     { path: '/admin/subscriptions', titleKey: 'nav.admin.subscriptions', icon: 'CreditCard' },
+    {
+      titleKey: 'nav.admin.system',
+      icon: 'Setting',
+      children: [
+        { path: '/admin/system/users', titleKey: 'nav.admin.systemUsers', icon: 'User' },
+        { path: '/admin/system/roles', titleKey: 'nav.admin.roles', icon: 'Avatar' },
+        { path: '/admin/system/menus', titleKey: 'nav.admin.menus', icon: 'Menu' },
+        { path: '/admin/system/dicts', titleKey: 'nav.admin.dicts', icon: 'Notebook' },
+        { path: '/admin/system/logs', titleKey: 'nav.admin.logs', icon: 'Document' },
+        { path: '/admin/system/terminals', titleKey: 'nav.admin.terminals', icon: 'Monitor' },
+        { path: '/admin/system/i18n', titleKey: 'nav.admin.i18n', icon: 'Connection' },
+      ],
+    },
   ],
   user: [],
 }
@@ -56,10 +72,22 @@ function onCommand(command: string) {
           </div>
         </div>
         <el-menu class="admin-menu" :default-active="route.path" router>
-          <el-menu-item v-for="m in menus" :key="m.path" :index="m.path">
-            <el-icon><component :is="m.icon" /></el-icon>
-            <span>{{ t(m.titleKey) }}</span>
-          </el-menu-item>
+          <template v-for="node in menus" :key="'path' in node ? node.path : node.titleKey">
+            <el-sub-menu v-if="!('path' in node)" :index="node.titleKey">
+              <template #title>
+                <el-icon><component :is="node.icon" /></el-icon>
+                <span>{{ t(node.titleKey) }}</span>
+              </template>
+              <el-menu-item v-for="c in node.children" :key="c.path" :index="c.path">
+                <el-icon><component :is="c.icon" /></el-icon>
+                <span>{{ t(c.titleKey) }}</span>
+              </el-menu-item>
+            </el-sub-menu>
+            <el-menu-item v-else :index="node.path">
+              <el-icon><component :is="node.icon" /></el-icon>
+              <span>{{ t(node.titleKey) }}</span>
+            </el-menu-item>
+          </template>
         </el-menu>
       </el-aside>
 

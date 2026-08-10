@@ -96,6 +96,25 @@ export function randFloat(min: number, max: number, digits = 1): number {
   return Number((min + Math.random() * (max - min)).toFixed(digits))
 }
 
+/** 演示用：根据经纬度生成上海市区模拟物理地址（省市区 + 道路门牌） */
+export function mockAddress(lat: number, lng: number): string {
+  const districts = [
+    '浦东新区张江高科园区',
+    '徐汇区徐家汇街道',
+    '杨浦区五角场街道',
+    '静安区南京西路街道',
+    '黄浦区外滩街道',
+    '长宁区中山公园街道',
+    '普陀区长寿路街道',
+    '闵行区莘庄镇',
+  ]
+  const roads = ['世纪大道', '张江路', '桂林路', '南京东路', '陆家嘴环路', '中山南路', '虹桥路', '莘建路']
+  const district = districts[Math.abs(Math.round(lat * 1000 + lng * 1000)) % districts.length]
+  const road = roads[Math.abs(Math.round(lng * 1000)) % roads.length]
+  const no = 1 + (Math.abs(Math.round(lat * 10000)) % 998)
+  return `上海市${district}${road}${no}号`
+}
+
 /** 分页切分 */
 export function paginate<T>(list: T[], page: number, pageSize: number) {
   const start = (page - 1) * pageSize

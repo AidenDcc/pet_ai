@@ -20,9 +20,9 @@ const loading = ref(false)
 const actionVisible = ref(false)
 const actionDevice = ref<DeviceJoined | null>(null)
 const COMMANDS = computed(() => [
-  { name: `🔔 ${t('user.location.cmdFind')}`, value: 'find' },
-  { name: `💡 ${t('user.location.cmdLight')}`, value: 'light' },
-  { name: `🛰️ ${t('user.location.cmdRefresh')}`, value: 'refresh' },
+  { name: `🔔 ${t('user.devices.cmdFind')}`, value: 'find' },
+  { name: `💡 ${t('user.devices.cmdLight')}`, value: 'light' },
+  { name: `🛰️ ${t('user.devices.cmdRefresh')}`, value: 'refresh' },
 ])
 
 async function load() {
@@ -118,7 +118,7 @@ async function unbind(device: DeviceJoined) {
 
       <div class="device-actions">
         <template v-if="d.boundPetId">
-          <van-button size="small" round plain type="primary" icon="location-o" @click="router.push('/user/location')">
+          <van-button size="small" round plain type="primary" icon="location-o" @click="router.push('/user/health')">
             {{ t('user.devices.findPet') }}
           </van-button>
           <van-button size="small" round plain type="primary" icon="bulb-o" @click="openCommands(d)">

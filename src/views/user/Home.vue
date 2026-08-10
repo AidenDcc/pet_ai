@@ -45,7 +45,7 @@ function onPetChange(index: number) {
 
 const quickActions = computed(() => [
   { title: t('nav.healthReport'), desc: t('nav.aiAnalysis'), icon: '📋', path: '/user/reports' },
-  { title: t('nav.realtimeLoc'), desc: t('user.home.quickFence'), icon: '📍', path: '/user/location' },
+  { title: t('nav.community'), desc: t('user.home.quickCommunity'), icon: '🐾', path: '/user/community' },
   { title: t('user.home.dataSync'), desc: t('user.home.quickUpload'), icon: '🔄', path: '/user/sync' },
   { title: t('user.home.voiceAssistant'), desc: t('user.home.quickVoice'), icon: '🎤', path: '/user/assistant' },
   { title: t('nav.deviceManage'), desc: t('user.home.quickDevice'), icon: '📟', path: '/user/devices' },
@@ -127,7 +127,7 @@ loadPets()
 
         <div v-if="activePet.device" class="hero-foot">
           <span class="foot-text">{{ t('user.home.lastSync') }}: {{ relativeTime(activePet.device.lastSyncAt) }} · {{ t('user.sync.battery', { n: activePet.device.battery }) }}</span>
-          <van-button size="mini" round plain type="primary" icon="location-o" @click="router.push('/user/location')">
+          <van-button size="mini" round plain type="primary" icon="location-o" @click="router.push('/user/health')">
             {{ t('user.home.viewLocation') }}
           </van-button>
         </div>

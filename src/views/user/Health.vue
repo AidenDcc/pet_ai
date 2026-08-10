@@ -32,7 +32,7 @@ const pets = ref<PetJoined[]>([])
 const activeIndex = ref(0)
 const devices = ref<DeviceJoined[]>([])
 const summary = ref<HealthSummary | null>(null)
-const track = ref<{ points: { lat: number; lng: number; ts: number }[]; center: { lat: number; lng: number } } | null>(null)
+const track = ref<{ points: { lat: number; lng: number; ts: number }[]; center: { lat: number; lng: number }; address: string } | null>(null)
 const fences = ref<PetFence[]>([])
 const exercise = ref<ExerciseState | null>(null)
 const loading = ref(false)
@@ -163,7 +163,7 @@ loadAll()
           </div>
           <div class="panel-pet-pos">
             <span class="pos-dot" />
-            {{ track ? `${track.center.lat.toFixed(4)}, ${track.center.lng.toFixed(4)}` : t('user.health.positionLoading') }}
+            {{ track ? track.address : t('user.health.positionLoading') }}
           </div>
         </div>
       </div>
@@ -252,7 +252,7 @@ loadAll()
   display: flex;
   justify-content: center;
   gap: 12px;
-  z-index: 10;
+  z-index: 100; /* 顶部导航，始终盖在高德地图（含其 Logo/版权）之上 */
   padding: 0 16px;
   pointer-events: none;
 
@@ -310,7 +310,7 @@ loadAll()
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  z-index: 10;
+  z-index: 100; /* 底部面板，盖在高德版权信息之上 */
 }
 
 .panel-handle {
@@ -355,6 +355,10 @@ loadAll()
     font-size: 11px;
     color: var(--sp-text-placeholder);
     margin-top: 2px;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 
     .pos-dot {
       width: 6px;

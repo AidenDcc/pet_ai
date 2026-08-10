@@ -37,6 +37,15 @@ function batteryColor(b: number) {
   return '#ff3b30'
 }
 
+// 详情
+const detailVisible = ref(false)
+const detailRow = ref<AdminDeviceRow | null>(null)
+
+function openDetail(row: AdminDeviceRow) {
+  detailRow.value = row
+  detailVisible.value = true
+}
+
 onMounted(load)
 </script>
 
@@ -84,6 +93,11 @@ onMounted(load)
         <el-table-column :label="t('admin.common.activatedAt')" min-width="150">
           <template #default="{ row }">{{ row.activatedAt ? formatDateTime(row.activatedAt) : '-' }}</template>
         </el-table-column>
+        <el-table-column :label="t('common.action')" width="100" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" link @click="openDetail(row as AdminDeviceRow)">{{ t('admin.common.viewDetail') }}</el-button>
+          </template>
+        </el-table-column>
       </el-table>
 
       <div class="pager">
@@ -99,6 +113,46 @@ onMounted(load)
         />
       </div>
     </el-card>
+
+    <el-dialog v-model="detailVisible" :title="t('admin.common.viewDetail')" width="560px" destroy-on-close>
+      <el-descriptions v-if="detailRow" :column="2" border>
+        <el-descriptions-item :label="t('admin.devices.detail.name')">
+          {{ detailRow.name || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.devices.detail.model')">
+          {{ detailRow.model || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.devices.detail.id')">
+          {{ detailRow.id }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.sn')">
+          {{ detailRow.sn }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="'IMEI'">
+          {{ detailRow.imei }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.status')">
+          <el-tag size="small" :type="DEVICE_STATUS[detailRow.status].tag">
+            {{ t(DEVICE_STATUS[detailRow.status].labelKey) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.battery')">
+          {{ detailRow.battery }}%
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.firmware')">
+          {{ detailRow.firmware || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.boundPet')">
+          {{ detailRow.petName ?? '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.owner')">
+          {{ detailRow.ownerName ?? '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('admin.common.activatedAt')">
+          {{ detailRow.activatedAt ? formatDateTime(detailRow.activatedAt) : '-' }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
   </div>
 </template>
 

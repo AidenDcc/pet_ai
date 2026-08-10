@@ -97,7 +97,7 @@ defineMock([
             lat: center.lat.toFixed(4),
             lng: center.lng.toFixed(4),
           }),
-          action: { type: 'route', path: '/user/location' },
+          action: { type: 'route', path: '/user/health' },
           intent: 'location',
         } as AssistantReply
       }

@@ -17,28 +17,55 @@ const saving = ref(false)
 // 添加/编辑弹窗
 const showForm = ref(false)
 const editingFence = ref<PetFence | null>(null)
+/** 地图选中心点模式：true 时点击地图设置围栏中心点 */
+const pickMode = ref(false)
+/** 地图上已选中心点标记 */
+const pickMarker = ref<{ lat: number; lng: number } | null>(null)
 const form = ref({
   name: '',
-  lat: 31.2304,
-  lng: 121.4737,
+  center: { lat: 31.2304, lng: 121.4737 },
   radius: 500,
 })
 
+/** 新增：先进入地图选点模式，点选中心点后再弹出设置 */
 function openAdd() {
   editingFence.value = null
-  form.value = { name: '', lat: 31.2304, lng: 121.4737, radius: 500 }
-  showForm.value = true
+  form.value = { name: '', center: { lat: 31.2304, lng: 121.4737 }, radius: 500 }
+  pickMarker.value = null
+  pickMode.value = true
+  showForm.value = false
 }
 
 function openEdit(fence: PetFence) {
   editingFence.value = fence
   form.value = {
     name: fence.name,
-    lat: fence.center.lat,
-    lng: fence.center.lng,
+    center: fence.center,
     radius: fence.radius,
   }
+  pickMarker.value = fence.center
+  pickMode.value = false
   showForm.value = true
+}
+
+/** 地图点选中心点回调 */
+function onPickCenter(pos: { lat: number; lng: number }) {
+  form.value.center = pos
+  pickMarker.value = pos
+  pickMode.value = false
+  showForm.value = true
+}
+
+/** 表单里重新选点 */
+function repickCenter() {
+  showForm.value = false
+  pickMode.value = true
+}
+
+/** 取消地图选点 */
+function cancelPick() {
+  pickMode.value = false
+  pickMarker.value = null
 }
 
 async function loadFences() {
@@ -61,7 +88,7 @@ async function doSave() {
   try {
     const data = {
       name: form.value.name.trim(),
-      center: { lat: form.value.lat, lng: form.value.lng },
+      center: form.value.center,
       radius: form.value.radius,
     }
     if (editingFence.value) {
@@ -107,14 +134,25 @@ onMounted(() => {
 
 <template>
   <div class="fence-manage">
-    <!-- 地图预览 -->
+    <!-- 地图预览（新增围栏时用于选中心点） -->
     <div class="map-preview">
       <Amap
         :points="[]"
         :center="null"
         :show-fence="false"
         :fences="fences"
+        :pick-mode="pickMode"
+        :pick-marker="pickMarker"
+        @pick-center="onPickCenter"
       />
+      <!-- 选点提示 -->
+      <div v-if="pickMode" class="pick-hint">
+        <span class="pick-hint-text">
+          <van-icon name="location-o" />
+          {{ t('user.health.pickCenterHint') }}
+        </span>
+        <van-button size="mini" plain type="default" @click="cancelPick">{{ t('common.cancel') }}</van-button>
+      </div>
     </div>
 
     <!-- 围栏列表 -->
@@ -129,8 +167,8 @@ onMounted(() => {
           <van-switch v-model="fence.enabled" size="20px" color="#ff6b00" @change="() => updateFenceApi(petId, fence.id, { enabled: fence.enabled })" />
         </div>
         <div class="fence-meta">
-          <span class="fence-radius">🔄 {{ t('user.location.radiusMeter', { n: fence.radius }) }}</span>
-          <span class="fence-coord">📍 {{ fence.center.lat.toFixed(4) }}, {{ fence.center.lng.toFixed(4) }}</span>
+          <span class="fence-radius">🔄 {{ t('user.health.radiusMeter', { n: fence.radius }) }}</span>
+          <span class="fence-coord">📍 {{ fence.address ?? t('user.health.positionLoading') }}</span>
         </div>
         <div class="fence-actions">
           <van-button size="small" plain type="primary" icon="edit" @click="openEdit(fence)">{{ t('common.edit') }}</van-button>
@@ -159,18 +197,16 @@ onMounted(() => {
         maxlength="20"
       />
 
-      <van-field
-        v-model="form.lat"
-        type="number"
-        label="Latitude"
-        placeholder="31.2304"
-      />
-      <van-field
-        v-model="form.lng"
-        type="number"
-        label="Longitude"
-        placeholder="121.4737"
-      />
+      <!-- 中心点：地图选点（编辑时也可重新选） -->
+      <div class="form-center">
+        <span class="form-center-label">{{ t('user.health.fenceCenter') }}</span>
+        <span class="form-center-value">
+          📍 {{ form.center.lat.toFixed(4) }}, {{ form.center.lng.toFixed(4) }}
+        </span>
+        <van-button size="mini" plain type="primary" icon="location-o" @click="repickCenter">
+          {{ t('user.health.repickCenter') }}
+        </van-button>
+      </div>
 
       <div class="form-radius">
         <div class="form-radius-label">
@@ -210,8 +246,39 @@ onMounted(() => {
 }
 
 .map-preview {
+  position: relative;
   height: 260px;
   margin: 0;
+  /* Amap 默认 320px，若不填满预览区会溢出盖住下方围栏列表 */
+  :deep(.amap-wrap) {
+    height: 100%;
+  }
+}
+
+/* 地图选中心点提示条 */
+.pick-hint {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+
+  .pick-hint-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sp-primary);
+  }
 }
 
 .fence-list {
@@ -258,6 +325,29 @@ onMounted(() => {
   font-weight: 700;
   margin-bottom: 12px;
   text-align: center;
+}
+
+.form-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+
+  .form-center-label {
+    color: var(--sp-text-secondary);
+    flex-shrink: 0;
+  }
+
+  .form-center-value {
+    flex: 1;
+    min-width: 0;
+    color: #333;
+    font-weight: 600;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
 }
 
 .form-radius {

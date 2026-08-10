@@ -1,5 +1,10 @@
 import type { PetFence } from '@/types'
-import { defineMock, MockError, uid } from '../helper'
+import { defineMock, MockError, uid, mockAddress } from '../helper'
+
+/** 组装围栏：附带中心点物理地址，供前端列表展示 */
+function joinFence(f: PetFence): PetFence {
+  return { ...f, address: mockAddress(f.center.lat, f.center.lng) }
+}
 
 /** 每个宠物的围栏列表（内存 DB） */
 const petFences: Record<string, PetFence[]> = {
@@ -43,7 +48,7 @@ defineMock([
     path: '/pet/:petId/fences',
     handler: ({ params }) => {
       const fences = petFences[params.petId] ?? []
-      return fences
+      return fences.map(joinFence)
     },
   },
   // 创建围栏
@@ -66,7 +71,7 @@ defineMock([
       }
       if (!petFences[params.petId]) petFences[params.petId] = []
       petFences[params.petId].push(fence)
-      return fence
+      return joinFence(fence)
     },
   },
   // 更新围栏
@@ -85,7 +90,7 @@ defineMock([
       if (data.center !== undefined) fence.center = data.center
       if (data.radius !== undefined) fence.radius = data.radius
       if (data.enabled !== undefined) fence.enabled = data.enabled
-      return fence
+      return joinFence(fence)
     },
   },
   // 删除围栏

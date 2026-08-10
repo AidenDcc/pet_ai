@@ -1,12 +1,21 @@
 import type {
+  CommunityComment,
+  CommunityPost,
   Consultation,
   DeviceInfo,
+  DictItem,
+  DictType,
   GeoPoint,
   HealthMetric,
+  LoginLog,
   OrderItem,
   PetInfo,
   ReportItem,
   SubscriptionPlan,
+  SysMenu,
+  SysRole,
+  SysUser,
+  Terminal,
   UploadRecord,
   UserInfo,
   VetInfo,
@@ -76,6 +85,15 @@ function avatarOf(name: string): string {
   // 用纯色底 + 首字的 emoji 占位（避免外链图片）
   return `data:image/svg+xml,${encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" rx="48" fill="${pick(avatarBg)}"/><text x="48" y="62" font-size="40" text-anchor="middle" fill="#fff" font-family="sans-serif">${name.slice(0, 1)}</text></svg>`,
+  )}`
+}
+
+const postImagePalette = ['#ff9f43', '#5b8ff9', '#ff6b6b', '#7d6bff', '#2bcbba', '#fd9644', '#ff6b00']
+
+/** 帖子配图：纯色底 + 🐾 + 标签（避免外链图片，风格同 avatarOf；不加渐变/defs 避免 data-URI 冲突） */
+function postImageOf(label: string, color: string): string {
+  return `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="${color}"/><text x="300" y="210" font-size="120" text-anchor="middle">🐾</text><text x="300" y="336" font-size="26" fill="#fff" text-anchor="middle">${label}</text></svg>`,
   )}`
 }
 
@@ -692,3 +710,237 @@ export function preheatTokens(): void {
   })
 }
 preheatTokens()
+
+/* ============================================================
+ * 宠屋（宠物社区）
+ * ============================================================ */
+export const communityFollows: { followerId: string; targetId: string }[] = []
+export const communityLikes: { postId: string; userId: string }[] = []
+export const communityPosts: CommunityPost[] = []
+export const communityComments: CommunityComment[] = []
+
+interface PostSeed {
+  authorId: string
+  petName: string
+  caption: string
+  imageCount: number
+  views: number
+  likes: number
+  comments: number
+  minutesAgo: number
+}
+
+const POST_SEEDS: PostSeed[] = [
+  // 林悦自己的帖子（feed 中应被排除，用于验证排除逻辑）
+  { authorId: 'u1', petName: '布丁', caption: '布丁今天的柯基拖地舞，笑死我了 🐶', imageCount: 4, views: 320, likes: 45, comments: 8, minutesAgo: 25 },
+  { authorId: 'u1', petName: '雪球', caption: '布偶猫的午后时光，软成一滩水', imageCount: 3, views: 560, likes: 80, comments: 12, minutesAgo: 60 * 28 },
+  // u5（林悦已关注，出现在"关注萌宠"）
+  { authorId: 'u5', petName: '豆豆', caption: '带豆豆去公园撒欢，跑了一下午', imageCount: 6, views: 2100, likes: 320, comments: 46, minutesAgo: 40 },
+  { authorId: 'u5', petName: '豆豆', caption: '第一次学会握手，老母亲泪目', imageCount: 2, views: 880, likes: 120, comments: 15, minutesAgo: 60 * 3 },
+  { authorId: 'u5', petName: '可乐', caption: '两小只的日常抢玩具大战', imageCount: 5, views: 3400, likes: 510, comments: 88, minutesAgo: 60 * 26 },
+  // u8（林悦已关注）
+  { authorId: 'u8', petName: '团子', caption: '柴犬的微笑治愈所有不开心', imageCount: 4, views: 4600, likes: 720, comments: 130, minutesAgo: 60 * 5 },
+  { authorId: 'u8', petName: '毛球', caption: '新到家的英短小朋友，求取名', imageCount: 9, views: 5200, likes: 830, comments: 210, minutesAgo: 60 * 30 },
+  { authorId: 'u8', petName: '旺财', caption: '金毛的拆家现场，家里遭殃了', imageCount: 3, views: 1300, likes: 190, comments: 34, minutesAgo: 60 * 9 },
+  // 未关注的作者
+  { authorId: 'u4', petName: '奶茶', caption: '橘猫的一天：吃、睡、撒娇', imageCount: 1, views: 680, likes: 95, comments: 10, minutesAgo: 60 * 7 },
+  { authorId: 'u7', petName: '年糕', caption: '边牧到底有多聪明，有图为证', imageCount: 6, views: 6100, likes: 940, comments: 176, minutesAgo: 60 * 11 },
+  { authorId: 'u10', petName: '糯米', caption: '布偶猫踩奶现场，太治愈了', imageCount: 2, views: 1500, likes: 240, comments: 29, minutesAgo: 60 * 15 },
+  { authorId: 'u12', petName: '橘子', caption: '萨摩耶的微笑暴击，融化冬天', imageCount: 4, views: 3900, likes: 580, comments: 92, minutesAgo: 60 * 22 },
+  { authorId: 'u15', petName: '煤球', caption: '狸花猫的王者气质，家猫版', imageCount: 1, views: 420, likes: 60, comments: 6, minutesAgo: 60 * 33 },
+  { authorId: 'u18', petName: '汤圆', caption: '泰迪的造型秀，托尼老师上线', imageCount: 5, views: 980, likes: 140, comments: 22, minutesAgo: 60 * 40 },
+]
+
+POST_SEEDS.forEach((s, i) => {
+  const images: string[] = []
+  for (let k = 0; k < s.imageCount; k++) {
+    images.push(postImageOf(`${s.petName} ${k + 1}`, pick(postImagePalette)))
+  }
+  communityPosts.push({
+    id: `cp${i + 1}`,
+    authorId: s.authorId,
+    petName: s.petName,
+    caption: s.caption,
+    images,
+    viewCount: s.views,
+    likeCount: s.likes,
+    commentCount: s.comments,
+    createdAt: Date.now() - s.minutesAgo * 60000,
+  })
+})
+
+// 演示关注：林悦 关注 u5、u8（使"关注萌宠"页签非空）
+communityFollows.push({ followerId: 'u1', targetId: 'u5' }, { followerId: 'u1', targetId: 'u8' })
+// 演示点赞：林悦 赞过 cp3（u5 的第一帖）
+communityLikes.push({ postId: 'cp3', userId: 'u1' })
+
+// 演示评论（含 u1 与其他用户），使部分帖子详情有内容
+const commentSeeds: { postId: string; authorId: string; content: string; minutesAgo: number }[] = [
+  { postId: 'cp3', authorId: 'u7', content: '豆豆太可爱了，被萌到了！', minutesAgo: 30 },
+  { postId: 'cp3', authorId: 'u1', content: '同款公园，下次偶遇呀 😄', minutesAgo: 20 },
+  { postId: 'cp7', authorId: 'u4', content: '求更新小猫咪的近照！', minutesAgo: 120 },
+  { postId: 'cp7', authorId: 'u8', content: '最近又胖了一圈哈哈', minutesAgo: 80 },
+  { postId: 'cp10', authorId: 'u5', content: '边牧果然是智商担当', minutesAgo: 300 },
+]
+commentSeeds.forEach((c, i) => {
+  communityComments.push({
+    id: `cc${i + 1}`,
+    postId: c.postId,
+    authorId: c.authorId,
+    content: c.content,
+    createdAt: Date.now() - c.minutesAgo * 60000,
+  })
+})
+
+/* ============================================================
+ * 系统管理（平台运营端）
+ * ============================================================ */
+export const sysUsers: SysUser[] = []
+export const sysRoles: SysRole[] = []
+export const sysMenus: SysMenu[] = []
+export const dictTypes: DictType[] = []
+export const dictItems: DictItem[] = []
+export const loginLogs: LoginLog[] = []
+export const terminals: Terminal[] = []
+
+const sysNow = Date.now()
+const sysDay = 86400000
+
+// 菜单（镜像平台真实菜单结构，parentId 关联成树）
+const MENU_SEEDS: Array<Omit<SysMenu, 'children'>> = [
+  { id: 'm1', parentId: null, name: '数据看板', type: 'dir', icon: 'TrendCharts', path: '/admin/dashboard', perm: '', sort: 1, visible: true, status: 'active' },
+  { id: 'm2', parentId: null, name: 'BI 报表', type: 'dir', icon: 'DataAnalysis', path: '/admin/bi', perm: '', sort: 2, visible: true, status: 'active' },
+  { id: 'm4', parentId: null, name: '设备管理', type: 'dir', icon: 'Monitor', path: '/admin/devices', perm: '', sort: 4, visible: true, status: 'active' },
+  { id: 'm5', parentId: null, name: '用户管理', type: 'dir', icon: 'User', path: '/admin/users', perm: '', sort: 5, visible: true, status: 'active' },
+  { id: 'm6', parentId: null, name: '宠物档案', type: 'dir', icon: 'Coin', path: '/admin/pets', perm: '', sort: 6, visible: true, status: 'active' },
+  { id: 'm7', parentId: null, name: '医生管理', type: 'dir', icon: 'FirstAidKit', path: '/admin/vets', perm: '', sort: 7, visible: true, status: 'active' },
+  { id: 'm8', parentId: null, name: '订单管理', type: 'dir', icon: 'List', path: '/admin/orders', perm: '', sort: 8, visible: true, status: 'active' },
+  { id: 'm9', parentId: null, name: '订阅套餐', type: 'dir', icon: 'CreditCard', path: '/admin/subscriptions', perm: '', sort: 9, visible: true, status: 'active' },
+  // 系统管理组
+  { id: 'm10', parentId: null, name: '系统管理', type: 'dir', icon: 'Setting', path: '/admin/system', perm: '', sort: 10, visible: true, status: 'active' },
+  { id: 'm11', parentId: 'm10', name: '系统用户', type: 'menu', icon: 'User', path: '/admin/system/users', perm: 'admin:system:user:list', sort: 1, visible: true, status: 'active' },
+  { id: 'm12', parentId: 'm10', name: '角色管理', type: 'menu', icon: 'Avatar', path: '/admin/system/roles', perm: 'admin:system:role:list', sort: 2, visible: true, status: 'active' },
+  { id: 'm13', parentId: 'm10', name: '菜单管理', type: 'menu', icon: 'Menu', path: '/admin/system/menus', perm: 'admin:system:menu:list', sort: 3, visible: true, status: 'active' },
+  { id: 'm14', parentId: 'm10', name: '数据字典', type: 'menu', icon: 'Notebook', path: '/admin/system/dicts', perm: 'admin:system:dict:list', sort: 4, visible: true, status: 'active' },
+  { id: 'm15', parentId: 'm10', name: '登录日志', type: 'menu', icon: 'Document', path: '/admin/system/logs', perm: 'admin:system:log:list', sort: 5, visible: true, status: 'active' },
+  { id: 'm16', parentId: 'm10', name: '终端管理', type: 'menu', icon: 'Monitor', path: '/admin/system/terminals', perm: 'admin:system:terminal:list', sort: 6, visible: true, status: 'active' },
+  { id: 'm3', parentId: 'm10', name: '国际化配置', type: 'menu', icon: 'Connection', path: '/admin/system/i18n', perm: 'admin:i18n:list', sort: 7, visible: true, status: 'active' },
+  // 按钮权限
+  { id: 'm17', parentId: 'm5', name: '用户新增', type: 'button', icon: '', path: '', perm: 'admin:user:add', sort: 1, visible: false, status: 'active' },
+  { id: 'm18', parentId: 'm5', name: '用户删除', type: 'button', icon: '', path: '', perm: 'admin:user:delete', sort: 2, visible: false, status: 'active' },
+  { id: 'm19', parentId: 'm11', name: '系统用户新增', type: 'button', icon: '', path: '', perm: 'admin:system:user:add', sort: 1, visible: false, status: 'active' },
+  { id: 'm20', parentId: 'm11', name: '系统用户删除', type: 'button', icon: '', path: '', perm: 'admin:system:user:delete', sort: 2, visible: false, status: 'active' },
+]
+MENU_SEEDS.forEach((m) => sysMenus.push(m))
+
+// 角色
+function addRole(data: Omit<SysRole, 'createdAt'>): SysRole {
+  const r: SysRole = { ...data, createdAt: sysNow - rand(30, 300) * sysDay }
+  sysRoles.push(r)
+  return r
+}
+addRole({
+  id: 'r1',
+  name: '平台管理员',
+  code: 'admin',
+  sort: 1,
+  status: 'active',
+  remark: '拥有全部菜单权限',
+  menuIds: sysMenus.map((m) => m.id),
+})
+addRole({
+  id: 'r2',
+  name: '运营专员',
+  code: 'operator',
+  sort: 2,
+  status: 'active',
+  remark: '负责运营与内容管理',
+  menuIds: ['m1', 'm2', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm14', 'm15', 'm17', 'm18', 'm19'],
+})
+addRole({
+  id: 'r3',
+  name: '审计员',
+  code: 'auditor',
+  sort: 3,
+  status: 'disabled',
+  remark: '只读审计访问',
+  menuIds: ['m1', 'm2', 'm10', 'm15'],
+})
+
+// 系统用户
+function addSysUser(data: Partial<SysUser> & Pick<SysUser, 'username' | 'name' | 'roleId'>): SysUser {
+  const u: SysUser = {
+    id: uid('su'),
+    phone: '',
+    email: '',
+    status: 'active',
+    lastLoginAt: null,
+    createdAt: sysNow - rand(3, 90) * sysDay,
+    ...data,
+  }
+  sysUsers.push(u)
+  return u
+}
+addSysUser({ username: 'ops_wang', name: '王静', roleId: 'r1', phone: '13800001001', email: 'wangjing@shuxinpet.com', lastLoginAt: sysNow - 2 * 3600000 })
+addSysUser({ username: 'ops_zhang', name: '张伟', roleId: 'r2', phone: '13800001002', email: 'zhangwei@shuxinpet.com', lastLoginAt: sysNow - 5 * 3600000 })
+addSysUser({ username: 'audit_li', name: '李娜', roleId: 'r3', phone: '13800001003', email: 'lina@shuxinpet.com', status: 'disabled', lastLoginAt: null })
+addSysUser({ username: 'ops_zhao', name: '赵磊', roleId: 'r2', phone: '13800001004', email: 'zhaolei@shuxinpet.com', lastLoginAt: sysNow - 26 * 3600000 })
+
+// 数据字典
+function addDictType(data: Omit<DictType, 'createdAt'>): DictType {
+  const t: DictType = { ...data, createdAt: sysNow - rand(30, 200) * sysDay }
+  dictTypes.push(t)
+  return t
+}
+addDictType({ id: 'd1', name: '性别', type: 'gender', remark: '宠物性别' })
+addDictType({ id: 'd2', name: '用户状态', type: 'user_status', remark: '账号启用状态' })
+addDictType({ id: 'd3', name: '登录状态', type: 'login_status', remark: '登录日志结果' })
+addDictType({ id: 'd4', name: '终端类型', type: 'terminal_type', remark: '客户端终端类型' })
+
+function addDictItem(data: Omit<DictItem, 'id'>): DictItem {
+  const it: DictItem = { id: uid('di'), ...data }
+  dictItems.push(it)
+  return it
+}
+addDictItem({ typeId: 'd1', label: '弟弟', value: 'male', sort: 1, status: 'active' })
+addDictItem({ typeId: 'd1', label: '妹妹', value: 'female', sort: 2, status: 'active' })
+addDictItem({ typeId: 'd2', label: '启用', value: 'active', sort: 1, status: 'active' })
+addDictItem({ typeId: 'd2', label: '禁用', value: 'disabled', sort: 2, status: 'active' })
+addDictItem({ typeId: 'd3', label: '成功', value: 'success', sort: 1, status: 'active' })
+addDictItem({ typeId: 'd3', label: '失败', value: 'failed', sort: 2, status: 'active' })
+addDictItem({ typeId: 'd4', label: '移动端 APP', value: 'app', sort: 1, status: 'active' })
+addDictItem({ typeId: 'd4', label: 'H5', value: 'h5', sort: 2, status: 'active' })
+addDictItem({ typeId: 'd4', label: '小程序', value: 'mini', sort: 3, status: 'active' })
+addDictItem({ typeId: 'd4', label: 'PC 端', value: 'pc', sort: 4, status: 'active' })
+
+// 登录日志
+const LOG_SEEDS: Array<Omit<LoginLog, 'id' | 'loginAt'>> = [
+  { username: 'ops_wang', ip: '223.104.10.18', location: '中国·上海', browser: 'Chrome 126', os: 'Windows 11', status: 'success', message: '登录成功' },
+  { username: 'ops_zhang', ip: '114.92.72.30', location: '中国·上海', browser: 'Safari 17', os: 'macOS 14', status: 'success', message: '登录成功' },
+  { username: 'unknown', ip: '203.0.113.9', location: '中国·北京', browser: 'Chrome 125', os: 'Windows 10', status: 'failed', message: '密码错误' },
+  { username: 'ops_wang', ip: '223.104.10.18', location: '中国·上海', browser: 'Chrome 126', os: 'Windows 11', status: 'success', message: '登录成功' },
+  { username: 'audit_li', ip: '120.53.99.6', location: '中国·广东', browser: 'Edge 126', os: 'Windows 11', status: 'success', message: '登录成功' },
+  { username: 'ops_zhang', ip: '114.92.72.30', location: '中国·上海', browser: 'Safari 17', os: 'macOS 14', status: 'success', message: '登录成功' },
+  { username: 'unknown', ip: '198.51.100.44', location: '海外', browser: 'Edge 125', os: 'Windows 11', status: 'failed', message: '账号不存在' },
+  { username: 'ops_zhao', ip: '39.144.0.66', location: '中国·浙江', browser: 'Chrome 126', os: 'Android 14', status: 'success', message: '登录成功' },
+  { username: 'ops_wang', ip: '223.104.10.18', location: '中国·上海', browser: 'Chrome 126', os: 'Windows 11', status: 'success', message: '登录成功' },
+  { username: 'ops_zhang', ip: '114.92.72.30', location: '中国·上海', browser: 'Safari 17', os: 'macOS 14', status: 'failed', message: '密码错误' },
+  { username: 'audit_li', ip: '120.53.99.6', location: '中国·广东', browser: 'Edge 126', os: 'Windows 11', status: 'success', message: '登录成功' },
+  { username: 'ops_zhao', ip: '39.144.0.66', location: '中国·浙江', browser: 'Chrome 126', os: 'Android 14', status: 'success', message: '登录成功' },
+  { username: 'unknown', ip: '45.66.33.21', location: '海外', browser: 'Chrome 120', os: 'Windows 10', status: 'failed', message: '验证码错误' },
+  { username: 'ops_wang', ip: '223.104.10.18', location: '中国·上海', browser: 'Chrome 126', os: 'Windows 11', status: 'success', message: '登录成功' },
+]
+LOG_SEEDS.forEach((s, i) => {
+  loginLogs.push({ ...s, id: `ll${i + 1}`, loginAt: sysNow - (i + 1) * 3 * 3600000 })
+})
+
+// 终端
+function addTerminal(data: Omit<Terminal, 'id' | 'updatedAt'>): Terminal {
+  const t: Terminal = { id: uid('tm'), updatedAt: sysNow - rand(2, 60) * sysDay, ...data }
+  terminals.push(t)
+  return t
+}
+addTerminal({ name: '宠物主 App', code: 'pet-app', type: 'app', latestVersion: '2.4.0', downloadUrl: 'https://apps.apple.com/cn/app/pet-s1/id0000000001', status: 'active', remark: 'iOS / Android' })
+addTerminal({ name: '医生端 H5', code: 'doctor-h5', type: 'h5', latestVersion: '1.8.2', downloadUrl: 'https://doctor.shuxinpet.com', status: 'active', remark: '' })
+addTerminal({ name: '宠物主小程序', code: 'pet-mini', type: 'mini', latestVersion: '1.2.1', downloadUrl: 'wx:gh_2a1b3c4d5e', status: 'active', remark: '微信小程序' })
+addTerminal({ name: '运营端 PC', code: 'admin-pc', type: 'pc', latestVersion: '1.0.5', downloadUrl: 'https://admin.shuxinpet.com', status: 'disabled', remark: '' })

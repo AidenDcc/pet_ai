@@ -51,6 +51,8 @@ export interface PetFence {
   radius: number
   enabled: boolean
   createdAt: number
+  /** 中心点物理地址（省市区，mock 生成，用于列表展示） */
+  address?: string
 }
 
 /** 运动实时状态 */
@@ -323,4 +325,125 @@ export interface I18nEntry {
   zh: string
   en: string
   isOverride?: boolean
+}
+
+/* ============================================================
+ * 宠屋（宠物社区）
+ * ============================================================ */
+
+/** 社区帖子（作者/会员信息由 join 注入） */
+export interface CommunityPost {
+  id: string
+  authorId: string
+  petName: string
+  caption: string
+  images: string[]
+  viewCount: number
+  likeCount: number
+  commentCount: number
+  createdAt: number
+}
+
+/** 社区评论 */
+export interface CommunityComment {
+  id: string
+  postId: string
+  authorId: string
+  content: string
+  createdAt: number
+}
+
+/* ============================================================
+ * 系统管理（平台运营端）
+ * ============================================================ */
+
+/** 系统用户（平台运营账号） */
+export interface SysUser {
+  id: string
+  username: string // 登录账号
+  name: string // 姓名
+  roleId: string // 角色
+  phone: string
+  email: string
+  status: 'active' | 'disabled'
+  lastLoginAt: number | null
+  createdAt: number
+}
+
+/** 角色（含菜单权限） */
+export interface SysRole {
+  id: string
+  name: string
+  code: string
+  sort: number
+  status: 'active' | 'disabled'
+  remark: string
+  menuIds: string[]
+  createdAt: number
+}
+
+/** 菜单类型：目录 / 菜单 / 按钮 */
+export type MenuType = 'dir' | 'menu' | 'button'
+
+/** 平台菜单 */
+export interface SysMenu {
+  id: string
+  parentId: string | null
+  name: string
+  type: MenuType
+  icon: string
+  path: string
+  perm: string
+  sort: number
+  visible: boolean
+  status: 'active' | 'disabled'
+  children?: SysMenu[]
+}
+
+/** 字典类型 */
+export interface DictType {
+  id: string
+  name: string
+  type: string
+  remark: string
+  createdAt: number
+}
+
+/** 字典项 */
+export interface DictItem {
+  id: string
+  typeId: string
+  label: string
+  value: string
+  sort: number
+  status: 'active' | 'disabled'
+}
+
+/** 登录日志 */
+export interface LoginLog {
+  id: string
+  username: string
+  ip: string
+  location: string
+  browser: string
+  os: string
+  status: 'success' | 'failed'
+  message: string
+  loginAt: number
+}
+
+/** 终端类型 */
+export type TerminalType = 'app' | 'h5' | 'mini' | 'pc'
+
+/** 客户端终端 */
+export interface Terminal {
+  id: string
+  name: string
+  code: string
+  type: TerminalType
+  latestVersion: string
+  downloadUrl: string
+  status: 'active' | 'disabled'
+  remark: string
+  updatedAt: number
 }

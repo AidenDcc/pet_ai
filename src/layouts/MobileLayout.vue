@@ -46,7 +46,7 @@ const TAB_CONFIG: Record<Role, TabItem[]> = {
   user: [
     { key: 'home', titleKey: 'nav.home', icon: 'home-o', routeName: 'user-home', match: ['/user/home'] },
     { key: 'health', titleKey: 'nav.healthMonitor', icon: 'chart-trending-o', routeName: 'user-health', match: ['/user/health'] },
-    { key: 'location', titleKey: 'nav.realtimeLoc', icon: 'location-o', routeName: 'user-location', match: ['/user/location'] },
+    { key: 'community', titleKey: 'nav.community', icon: 'paw', routeName: 'user-community', match: ['/user/community'] },
     { key: 'me', titleKey: 'nav.me', icon: 'user-o', routeName: 'user-me', match: ['/user/me'] },
   ],
   doctor: [
@@ -88,7 +88,20 @@ function onTabChange(name: string | number) {
       <router-view />
     </div>
     <van-tabbar v-if="showTabbar" :model-value="active" :fixed="false" active-color="#ff6b00" :class="{ 'tabbar--bottom': hideNavbar }" @change="onTabChange">
-      <van-tabbar-item v-for="tab in tabs" :key="tab.key" :name="tab.key" :icon="tab.icon">{{ t(tab.titleKey) }}</van-tabbar-item>
+      <van-tabbar-item v-for="tab in tabs" :key="tab.key" :name="tab.key">
+        <template #icon>
+          <!-- 宠屋：宠物爪印 SVG，随选中态着色；其余页签仍用 Vant 图标 -->
+          <svg v-if="tab.icon === 'paw'" class="tabbar-paw-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 10.8c-2.4 0-4.3 1.8-4.3 4.1S9.6 19 12 19s4.3-1.8 4.3-4.1-1.9-4.1-4.3-4.1z" />
+            <circle cx="5.7" cy="8.3" r="2.1" />
+            <circle cx="9.6" cy="6" r="2.1" />
+            <circle cx="14.4" cy="6" r="2.1" />
+            <circle cx="18.3" cy="8.3" r="2.1" />
+          </svg>
+          <van-icon v-else :name="tab.icon" />
+        </template>
+        {{ t(tab.titleKey) }}
+      </van-tabbar-item>
     </van-tabbar>
   </PhoneShell>
 
@@ -108,7 +121,20 @@ function onTabChange(name: string | number) {
     </div>
 
     <van-tabbar v-if="showTabbar" :model-value="active" active-color="#ff6b00" @change="onTabChange">
-      <van-tabbar-item v-for="tab in tabs" :key="tab.key" :name="tab.key" :icon="tab.icon">{{ t(tab.titleKey) }}</van-tabbar-item>
+      <van-tabbar-item v-for="tab in tabs" :key="tab.key" :name="tab.key">
+        <template #icon>
+          <!-- 宠屋：宠物爪印 SVG，随选中态着色；其余页签仍用 Vant 图标 -->
+          <svg v-if="tab.icon === 'paw'" class="tabbar-paw-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 10.8c-2.4 0-4.3 1.8-4.3 4.1S9.6 19 12 19s4.3-1.8 4.3-4.1-1.9-4.1-4.3-4.1z" />
+            <circle cx="5.7" cy="8.3" r="2.1" />
+            <circle cx="9.6" cy="6" r="2.1" />
+            <circle cx="14.4" cy="6" r="2.1" />
+            <circle cx="18.3" cy="8.3" r="2.1" />
+          </svg>
+          <van-icon v-else :name="tab.icon" />
+        </template>
+        {{ t(tab.titleKey) }}
+      </van-tabbar-item>
     </van-tabbar>
   </div>
 
@@ -170,5 +196,12 @@ function onTabChange(name: string | number) {
   border: 1px solid var(--sp-border);
   border-radius: 12px;
   line-height: 1.4;
+}
+
+/* 底部栏自定义爪印图标：尺寸与 Vant 图标一致，颜色继承选中态 */
+.tabbar-paw-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 </style>
