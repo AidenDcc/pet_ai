@@ -55,7 +55,7 @@ load()
 
     <!-- 功能菜单 -->
     <div class="menu sp-card mt-16">
-      <van-cell :title="`🐾 ${t('user.me.myPets')}`" is-link @click="router.push('/user/home')" />
+      <van-cell :title="`🐾 ${t('user.me.myPets')}`" is-link @click="router.push('/user/pets')" />
       <van-cell :title="`⚡ ${t('user.me.dataSync')}`" is-link @click="router.push('/user/sync')" />
       <van-cell :title="`🎙️ ${t('user.me.voiceAssistant')}`" is-link @click="router.push('/user/assistant')" />
       <van-cell :title="`📟 ${t('user.me.devices')}`" is-link @click="router.push('/user/devices')" />

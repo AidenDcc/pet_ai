@@ -11,7 +11,7 @@ import {
   commandDeviceApi,
   type DeviceJoined,
 } from '@/api/modules/device'
-import MockMap from '@/components/MockMap.vue'
+import Amap from '@/components/Amap.vue'
 import { relativeTime } from '@/utils/format'
 
 const router = useRouter()
@@ -130,7 +130,7 @@ loadPets()
             </div>
             <van-button size="small" round plain type="primary" icon="replay" @click="refresh">{{ t('common.refresh') }}</van-button>
           </div>
-          <MockMap
+          <Amap
             v-if="track"
             :points="track.points"
             :center="device.geofence?.center ?? track.center"

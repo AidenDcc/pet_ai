@@ -88,6 +88,63 @@ defineMock([
       return paginate(joined, Number(page), Number(pageSize))
     },
   },
+  // 新增宠物（用户端）
+  {
+    method: 'post',
+    path: '/pet',
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      const body = (ctx.body ?? {}) as Partial<PetInfo>
+      if (!body.name) throw new MockError('宠物昵称不能为空')
+      const now = new Date().toISOString()
+      const name = body.name || '未命名'
+      const pet: PetInfo = {
+        id: `p${pets.length + 1}`,
+        name: body.name || '未命名',
+        species: body.species || 'dog',
+        breed: body.breed || '未知',
+        gender: body.gender || 'male',
+        birthDate: body.birthDate || now,
+        weight: body.weight ?? 0,
+        avatar: `data:image/svg+xml,${encodeURIComponent(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" rx="48" fill="#5b8ff9"/><text x="48" y="62" font-size="40" text-anchor="middle" fill="#fff" font-family="sans-serif">${name.slice(0, 1)}</text></svg>`,
+        )}`,
+        ownerId: user.id,
+        deviceId: null,
+        sterilized: body.sterilized ?? false,
+        microchip: `${Math.floor(Math.random() * 900000000 + 100000000)}${Math.floor(Math.random() * 900000000 + 100000000)}`,
+        createdAt: now,
+      }
+      pets.push(pet)
+      user.petIds.push(pet.id)
+      return joinPet(pet)
+    },
+  },
+  // 删除宠物（用户端）
+  {
+    method: 'delete',
+    path: '/pet/:id',
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      const pet = findPetById(ctx.params.id)
+      if (!pet) throw new MockError('宠物不存在', 404)
+      if (pet.ownerId !== user.id) throw new MockError('无权操作该宠物', 403)
+      // 解绑关联设备
+      const device = devices.find((d) => d.boundPetId === pet.id)
+      if (device) {
+        device.boundPetId = null
+        device.ownerId = null
+        device.status = 'unbound'
+      }
+      // 移除主人 petIds 中的引用
+      const idx = user.petIds.indexOf(pet.id)
+      if (idx !== -1) user.petIds.splice(idx, 1)
+      // 从 pets 数组中删除
+      const petIdx = pets.findIndex((p) => p.id === pet.id)
+      if (petIdx !== -1) pets.splice(petIdx, 1)
+      return null
+    },
+  },
   // 宠物档案详情（医生/运营查看，含主人信息）
   {
     method: 'get',

@@ -59,7 +59,7 @@ loadPets()
   <div class="home">
     <!-- 无宠物引导 -->
     <van-empty v-if="!loading && !pets.length" :description="t('user.home.empty')">
-      <van-button round type="primary" @click="router.push('/user/devices/bind')">
+      <van-button round type="primary" @click="router.push('/user/pets')">
         {{ t('user.home.goBind') }}
       </van-button>
     </van-empty>

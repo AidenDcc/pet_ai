@@ -73,6 +73,18 @@ export const userRoutes: RouteRecordRaw[] = [
         meta: { titleKey: 'nav.bindDevice' },
       },
       {
+        path: 'pets',
+        name: 'user-pets',
+        component: () => import('@/views/user/PetList.vue'),
+        meta: { titleKey: 'user.petList.title' },
+      },
+      {
+        path: 'pets/add',
+        name: 'user-pet-add',
+        component: () => import('@/views/user/PetAdd.vue'),
+        meta: { titleKey: 'user.petAdd.title' },
+      },
+      {
         path: 'pet/:id',
         name: 'user-pet',
         component: () => import('@/views/user/PetProfile.vue'),
