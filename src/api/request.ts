@@ -2,6 +2,7 @@ import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axio
 import { resolveMock, MockError } from '@/mock'
 import type { MockContext } from '@/mock/helper'
 import { findUserByToken } from '@/mock/db'
+import { getToken, clearSession } from '@/utils/session'
 import type { ApiResult } from '@/types'
 
 const request = axios.create({ baseURL: '/api', timeout: 15000 })
@@ -42,8 +43,7 @@ request.defaults.adapter = async (config) => {
   } catch (err) {
     const e = err as { code?: number; message?: string }
     if (err instanceof MockError && e.code === 401) {
-      localStorage.removeItem('sp_token')
-      localStorage.removeItem('sp_role')
+      clearSession()
     }
     return response(config, { code: e?.code ?? 1, data: null, message: e?.message ?? '请求失败' })
   }
@@ -71,18 +71,21 @@ function delay(): Promise<void> {
 
 // 请求拦截：附加 token
 request.interceptors.request.use((config) => {
-  const token = localStorage.getItem('sp_token')
+  const token = getToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// 响应拦截：解包 { code, data, message }，直接返回 data
+// 响应拦截：解包 { code, data, message }，直接返回 data；错误把 code 挂到 Error 上，
+// 供上层按业务码映射为 i18n 文案（如登录错误 1001/1002/1010）
 request.interceptors.response.use(
   (res) => {
     const body = res.data as ApiResult
     if (body && typeof body === 'object' && 'code' in body) {
       if (body.code === 0) return body.data as never
-      return Promise.reject(new Error(body.message || '请求失败'))
+      const err = new Error(body.message || '请求失败') as Error & { code?: number }
+      err.code = body.code
+      return Promise.reject(err)
     }
     return body as never
   },

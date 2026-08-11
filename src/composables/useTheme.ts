@@ -11,11 +11,14 @@ export function useTheme() {
   const auth = useAuthStore()
   const route = useRoute()
 
+  // 仅宠物主端认证页使用橙色主题；医生端 / 平台端登录注册走默认青色
+  const AUTH_PATHS = ['/user/login', '/user/register', '/user/forgot', '/agreement']
+
   watch(
     [() => auth.role, () => route.path],
     () => {
-      const isAppLogin = route.path.startsWith('/login')
-      const isOrange = isAppLogin || auth.role === 'user'
+      const isAppAuth = AUTH_PATHS.some((p) => route.path.startsWith(p))
+      const isOrange = isAppAuth || auth.role === 'user'
       document.body.classList.toggle('theme-orange', isOrange)
     },
     { immediate: true },

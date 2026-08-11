@@ -22,7 +22,7 @@ async function load() {
 
 function switchRole() {
   auth.logout()
-  router.push('/login')
+  router.push('/')
 }
 
 load()

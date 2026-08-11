@@ -1,12 +1,83 @@
 import type { RouteRecordRaw } from 'vue-router'
+import { LOGIN_PATH } from '@/utils/consts'
+import type { Role } from '@/types'
 
 export const publicRoutes: RouteRecordRaw[] = [
-  { path: '/', redirect: '/login' },
+  {
+    path: '/',
+    name: 'portal',
+    component: () => import('@/views/portal/Portal.vue'),
+    meta: { public: true },
+  },
+  /* 旧统一入口兼容：按 ?role= 重定向到对应端登录页 */
   {
     path: '/login',
-    name: 'login',
-    component: () => import('@/views/auth/Login.vue'),
-    meta: { titleKey: 'login.title', public: true },
+    redirect: (to) => ({ path: LOGIN_PATH[(to.query.role as Role) || 'user'] || LOGIN_PATH.user }),
+  },
+  { path: '/register', redirect: '/user/register' },
+  { path: '/forgot', redirect: '/user/forgot' },
+  /* 宠物主端登录 / 注册 / 找回密码 */
+  {
+    path: '/user/login',
+    name: 'login-user',
+    component: () => import('@/views/user/Login.vue'),
+    meta: { titleKey: 'login.owner.welcome', public: true, role: 'user' },
+  },
+  {
+    path: '/user/register',
+    name: 'register-user',
+    component: () => import('@/views/user/Register.vue'),
+    meta: { titleKey: 'register.title', public: true, role: 'user' },
+  },
+  {
+    path: '/user/forgot',
+    name: 'forgot-user',
+    component: () => import('@/views/user/Forgot.vue'),
+    meta: { titleKey: 'forgot.title', public: true, role: 'user' },
+  },
+  /* 医生端登录 / 注册 / 找回密码 */
+  {
+    path: '/doctor/login',
+    name: 'login-doctor',
+    component: () => import('@/views/doctor/Login.vue'),
+    meta: { titleKey: 'login.doctor.welcome', public: true, role: 'doctor' },
+  },
+  {
+    path: '/doctor/register',
+    name: 'register-doctor',
+    component: () => import('@/views/doctor/Register.vue'),
+    meta: { titleKey: 'register.doctor.welcome', public: true, role: 'doctor' },
+  },
+  {
+    path: '/doctor/forgot',
+    name: 'forgot-doctor',
+    component: () => import('@/views/doctor/Forgot.vue'),
+    meta: { titleKey: 'forgot.doctor.welcome', public: true, role: 'doctor' },
+  },
+  /* 平台端登录 / 注册 / 找回密码 */
+  {
+    path: '/admin/login',
+    name: 'login-admin',
+    component: () => import('@/views/admin/Login.vue'),
+    meta: { titleKey: 'login.admin.welcome', public: true, role: 'admin' },
+  },
+  {
+    path: '/admin/register',
+    name: 'register-admin',
+    component: () => import('@/views/admin/Register.vue'),
+    meta: { titleKey: 'register.admin.welcome', public: true, role: 'admin' },
+  },
+  {
+    path: '/admin/forgot',
+    name: 'forgot-admin',
+    component: () => import('@/views/admin/Forgot.vue'),
+    meta: { titleKey: 'forgot.admin.welcome', public: true, role: 'admin' },
+  },
+  {
+    path: '/agreement/:type',
+    name: 'agreement',
+    component: () => import('@/views/auth/Agreement.vue'),
+    meta: { public: true },
   },
   {
     path: '/404',

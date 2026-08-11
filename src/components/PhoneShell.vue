@@ -52,6 +52,11 @@ onBeforeUnmount(() => {
         </span>
       </div>
 
+      <!-- Vant 弹层 teleport 容器：弹层渲染在此处以约束在手机屏幕内。
+           必须位于 slot 之前：slot 内的弹层组件挂载/显示时会解析 teleport 目标，
+           若目标声明在 slot 之后，则挂载时目标尚不存在，弹层将无法渲染。 -->
+      <div id="phone-teleport" class="phone-teleport"></div>
+
       <!-- App 内容区域 -->
       <div class="phone-app">
         <slot />
@@ -59,9 +64,6 @@ onBeforeUnmount(() => {
 
       <!-- 底部导航条 -->
       <div class="phone-nav-bar"></div>
-
-      <!-- Vant 弹层 teleport 容器：弹层渲染在此处以约束在手机屏幕内 -->
-      <div id="phone-teleport" class="phone-teleport"></div>
     </div>
   </div>
 </template>
@@ -121,6 +123,11 @@ onBeforeUnmount(() => {
   background: var(--sp-bg);
   display: flex;
   flex-direction: column;
+  /* transform 使本元素成为 position:fixed 元素的包含块。
+     Vant 弹层（action-sheet / popup / toast）默认渲染到 body 且为 fixed 定位，
+     若无 transform，它们会覆盖整个浏览器窗口，破坏手机外壳的显示效果；
+     加 transform 后这些弹层会被约束在手机屏幕内，无需依赖 teleport。 */
+  transform: translateZ(0);
 }
 
 /* 居中挖孔前摄 — 华为 Mate80 标志性设计 */

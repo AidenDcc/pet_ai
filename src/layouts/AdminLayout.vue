@@ -72,10 +72,10 @@ const pageTitle = computed(() => (route.meta.titleKey ? t(route.meta.titleKey as
 function onCommand(command: string) {
   if (command === 'switch') {
     auth.logout()
-    router.push('/login')
+    router.push('/')
   } else if (command === 'logout') {
     auth.logout()
-    router.push('/login')
+    router.push('/')
   }
 }
 </script>

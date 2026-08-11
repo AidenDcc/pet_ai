@@ -11,6 +11,7 @@ import type {
   OrderItem,
   PetInfo,
   ReportItem,
+  Role,
   SubscriptionPlan,
   SysMenu,
   SysRole,
@@ -102,6 +103,47 @@ function postImageOf(label: string, color: string): string {
  * ============================================================ */
 export const users: DbUser[] = []
 
+/**
+ * 注册新账号（手机号或邮箱注册，默认创建宠物主）。返回新用户；注册时已由
+ * mock 校验过手机号/邮箱未占用、验证码正确。医生/平台端注册时传入对应 role。
+ */
+export function registerUser(input: {
+  account: string
+  phone?: string
+  email?: string
+  password: string
+  name?: string
+  role?: Role
+}): DbUser {
+  const isEmail = Boolean(input.email)
+  const last4 = (input.phone || input.email || '').replace(/\D/g, '').slice(-4)
+  const role = input.role ?? 'user'
+  const name =
+    input.name ||
+    (isEmail
+      ? (input.email || '').split('@')[0] || '宠物主'
+      : last4
+        ? `宠主${last4}`
+        : '宠物主')
+  const user: DbUser = {
+    id: `u${users.length + 1}`,
+    account: input.account,
+    password: input.password,
+    name,
+    phone: input.phone || '',
+    email: isEmail ? input.email : '',
+    avatar: avatarOf(name),
+    role,
+    petIds: [],
+    planId: null,
+    planExpireAt: null,
+    registeredAt: new Date().toISOString(),
+    status: 'active',
+  }
+  users.push(user)
+  return user
+}
+
 function addUser(data: Partial<DbUser>): DbUser {
   const user: DbUser = {
     id: `u${users.length + 1}`,
@@ -129,6 +171,7 @@ const demoOwner = addUser({
   account: 'user',
   name: '林悦',
   phone: '13800000001',
+  email: 'linyue@shuxinpet.com',
   role: 'user',
   planId: 'pro',
 })
@@ -137,6 +180,7 @@ addUser({
   account: 'doctor',
   name: '陈思远',
   phone: '13800000002',
+  email: 'doctor@shuxinpet.com',
   role: 'doctor',
 })
 // 演示运营账号
@@ -144,6 +188,7 @@ addUser({
   account: 'admin',
   name: '平台运营',
   phone: '13800000003',
+  email: 'admin@shuxinpet.com',
   role: 'admin',
 })
 

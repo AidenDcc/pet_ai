@@ -2,12 +2,15 @@
 
 以 **Pet-S1 宠物智能项圈**为硬件载体的一站式宠物健康守护平台前端演示工程：健康监测（心率 / 呼吸 / 血氧 / 体温 / 活动 / 睡眠）、实时定位（高德地图）、电子围栏、运动监测、远程指令、健康报告、AI 分析、在线问诊、宠物社区、多语言（中/英）、订阅计费，面向 **宠物主 / 宠物医生 / 平台运营** 三端角色。
 
+首屏为**三端入口门户**（`/`），三端各自拥有独立的 **登录 / 注册 / 找回密码** 页面，登录时**强制校验账号角色与入口一致**；界面按欧美用户交互风格设计（宠物主端清爽极简、邮箱优先、含 Google / Apple 社交登录占位）。
+
 > 无后端依赖：所有数据交互由前端内置的 **mock 层**（axios 自定义 adapter + 内存种子数据）模拟，延迟与响应包均按真实接口设计。登录、绑定设备、下单、审核报告、改价、围栏增删、社区点赞/关注等操作会真实改变内存数据。
 
 ## 技术栈
 
 - Vue 3.5 + TypeScript + Vite + Vue Router + Pinia + **vue-i18n 11**（中英双语，词条可在运营端运行时编辑）
-- 用户端：**Vant 4**（宠物主 APP 样式，浏览器内手机外壳呈现，活力橙主题，限宽 402px）
+- **三端入口门户**（`/`）+ **三端独立登录 / 注册 / 找回密码**（角色强校验）
+- 用户端：**Vant 4**（宠物主 APP 样式，浏览器内手机外壳呈现，活力橙主题，限宽 402px；欧美化极简登录页，邮箱优先、国际区号、Google / Apple 登录占位）
 - 医生端：**Vant 4**（移动端 H5，限宽 480px，保持青色）
 - 运营端：**Element Plus**（桌面中后台，保持青色）
 - 高德地图 JS API（定位 / 轨迹 / 电子围栏，`VITE_AMAP_KEY` / `VITE_AMAP_JSCODE`）
@@ -34,15 +37,17 @@ pnpm preview      # 预览构建产物
 
 ## 演示账号（密码均为 `123456`）
 
-| 角色 | 账号 | 说明 |
-| ---- | ---- | ---- |
-| 🐾 宠物主 | `user` | 林悦 · 13800000001，名下两只宠物（布丁/雪球） |
-| 🩺 宠物医生 | `doctor` | 陈思远 · 安心宠物医院 |
-| 📊 平台运营 | `admin` | 平台管理员 |
+| 角色 | 账号 | 登录入口 | 说明 |
+| ---- | ---- | ---- | ---- |
+| 🐾 宠物主 | `user` | `/user/login` | 林悦 · 13800000001，名下两只宠物（布丁/雪球） |
+| 🩺 宠物医生 | `doctor` | `/doctor/login` | 陈思远 · 安心宠物医院 |
+| 📊 平台运营 | `admin` | `/admin/login` | 平台管理员 |
 
-登录页提供三个演示账号卡片，点击即可一键填入并登录。登录态存于 `localStorage`（`sp_token` / `sp_role`）。
+各端登录页仅展示**本端**演示账号卡片，点击一键填入并登录；账号角色与入口不匹配时提示「该账号不属于当前入口」。登录态存于 `sp_token` / `sp_role`：勾选 **Remember me** 写入 `localStorage`（跨会话保持），取消勾选仅写入 `sessionStorage`（当前标签页有效）。
 
 ## 三端功能一览
+
+> 三端各自的 **登录 / 注册 / 找回密码** 独立成页：宠物主端（欧美极简 · 橙色）走 `/user/login`；医生端（青色 H5）走 `/doctor/login`；运营端（Element 桌面）走 `/admin/login`。登录接口按角色归属校验，旧 `/login?role=xxx` 入口自动重定向到对应端登录页。
 
 ### 🐾 用户端（宠物主 APP · 手机外壳 · 活力橙）
 
@@ -82,28 +87,29 @@ Pet AI/
 └── src/
     ├── main.ts                  # 挂载、样式、Element Plus icons 全局注册
     ├── styles/                  # CSS 变量主题（--sp-primary 品牌色）+ 重置 + 工具类
-    ├── locales/                 # vue-i18n 中英文基础词条 + 合并逻辑
+    ├── locales/                 # vue-i18n 中英文基础词条 + 合并逻辑（zh/en key 自动校验对齐）
     ├── router/                  # 按角色分模块的路由表 + 登录/角色守卫
     ├── layouts/                 # MobileLayout（Vant 顶栏+Tabbar，服务用户/医生端）/ AdminLayout（侧边栏+顶栏，运营端）
     ├── views/
-    │   ├── auth/Login.vue       # 三角色演示账号登录
-    │   ├── user/                # 用户端：home/health(守护)/community(宠圈)/consult(问诊)/fence/device*/pet*/report* 等
-    │   ├── doctor/              # 医生端：dashboard/patients/telemetry/reports/ai-analysis/bi
-    │   ├── admin/               # 运营端：dashboard/bi/devices/users/pets(档案/健康/报告)/vets/orders/subscriptions
+    │   ├── portal/Portal.vue    # 首屏三端入口门户（宠物主 / 医生 / 运营）
+    │   ├── auth/Agreement.vue   # 用户协议 / 隐私政策
+    │   ├── user/                # 宠物主端：login/register/forgot + home/health(守护)/community(宠圈)/consult(问诊)/fence/device*/pet*/report* 等
+    │   ├── doctor/              # 医生端：login/register/forgot + dashboard/patients/telemetry/reports/ai-analysis/bi
+    │   ├── admin/               # 运营端：login/register/forgot + dashboard/bi/devices/users/pets(档案/健康/报告)/vets/orders/subscriptions
     │   └── admin/system/        # 系统管理：users/roles/menus/dicts/logs/terminals + I18n
-    ├── components/              # Amap（高德地图封装）/ PetAvatarUploader / PetCareSections（疫苗驱虫维护）/ VitalChart（ECharts 曲线）/ PhoneShell
+    ├── components/              # Amap（高德地图封装）/ PetAvatarUploader / PetCareSections（疫苗驱虫维护）/ VitalChart（ECharts 曲线）/ PhoneShell（手机外壳）
     ├── api/
-    │   ├── request.ts           # axios 实例 + mock adapter 分发 + 拦截器解包
+    │   ├── request.ts           # axios 实例 + mock adapter 分发 + 拦截器解包（保留业务错误码供 i18n 映射）
     │   └── modules/             # auth/pet/device/health/report/order/admin/community/fence/exercise/consultation/i18n/system/bi/assistant 接口封装
     ├── mock/
     │   ├── db.ts                # 内存种子数据 + 变更方法（绑定/下单/审核/改价/围栏/社区真实生效）
     │   ├── helper.ts            # {code,data,message} 响应包、随机延迟、鉴权、分页
     │   ├── index.ts             # 注册全部 mock handler
     │   └── modules/             # 与 api/modules 对应的 mock 实现（80+ 接口路径）
-    ├── stores/                  # auth（token/role/user 持久化）/ i18n（词条加载与运行时覆盖）
-    ├── composables/             # useEchart（图表初始化/自适应销毁）/ useTheme
+    ├── stores/                  # auth（token/role/user 持久化，remember 记忆）/ i18n（词条加载与运行时覆盖）
+    ├── composables/             # useLoginForm / useAuthAccountForm（登录/注册/找回共享逻辑）/ useCountdown / useEchart / useTheme
     ├── types/                   # 领域类型
-    └── utils/                   # echarts 按需注册 / 时间数值格式化 / 枚举字典 / 宠物头像映射
+    └── utils/                   # consts（登录/首页路径、国际区号、演示账号）/ session（登录态持久化）/ authError（错误码→i18n）/ echarts / format / petAvatar
 ```
 
 ## Mock 设计要点
@@ -136,6 +142,7 @@ Pet AI/
 - [x] `pnpm type-check`（vue-tsc）零错误
 - [x] `pnpm build` 生产构建通过
 - [x] mock 层 80+ 接口运行时 smoke 测试全部通过（含绑定/下单/审核/改价/围栏/社区等变更链路）
-- [x] `pnpm dev` 正常启动，登录 → 各端核心链路可走通
+- [x] 中英文词条 key 完全对齐（zh-CN / en-US 各 1027 个 leaf，无缺失/多余）
+- [x] `pnpm dev` 正常启动：门户 → 三端登录 → 各端核心链路可走通；账号角色错配被拒、深链回跳、旧 `/login?role=` 兼容重定向均验证通过
 
 > 说明：图表使用 ECharts 体积较大，构建时会有 chunk 大小提示，属正常现象，不影响功能。

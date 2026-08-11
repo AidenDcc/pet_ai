@@ -6,6 +6,8 @@ export interface UserInfo {
   id: string
   name: string
   phone: string
+  /** 邮箱（注册账号可为手机号或邮箱，邮箱注册时非空） */
+  email?: string
   avatar: string
   role: Role
   petIds: string[]
@@ -14,6 +16,12 @@ export interface UserInfo {
   registeredAt: string
   status: 'active' | 'disabled'
 }
+
+/** 验证码场景：登录 / 注册 / 找回密码 */
+export type VerifyScene = 'login' | 'register' | 'reset'
+
+/** 联系方式类型：手机号 / 邮箱 */
+export type ContactType = 'phone' | 'email'
 
 /** 疫苗记录 */
 export interface VaccineRecord {

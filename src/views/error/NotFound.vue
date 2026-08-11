@@ -9,7 +9,7 @@ const { t } = useI18n()
   <div class="not-found">
     <div class="nf-code">404</div>
     <div class="nf-text">{{ t('common.pageLost') }}</div>
-    <el-button type="primary" @click="router.push('/login')">{{ t('common.backHome') }}</el-button>
+    <el-button type="primary" @click="router.push('/')">{{ t('common.backHome') }}</el-button>
   </div>
 </template>
 
