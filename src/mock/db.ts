@@ -668,6 +668,35 @@ export const consultations: Consultation[] = [
     status: 'active',
     pushedAt: Date.now() - 2 * 86400000,
     note: '布丁最近食欲一般，晚上偶尔哼唧，请医生帮忙看看数据。',
+    images: [],
+    healthSnapshot: {
+      temperature: 38.5,
+      heartRate: 96,
+      spo2: 98,
+      respiratoryRate: 22,
+      activityPercent: 68,
+      sleepHours: 9.2,
+      updatedAt: Date.now() - 2 * 86400000 + 3600000,
+    },
+    exerciseSnapshot: {
+      stepFreq: 82,
+      stride: 27,
+      gait: 'walk',
+      speed: 0.8,
+      updatedAt: Date.now() - 2 * 86400000 + 3600000,
+    },
+    replies: [
+      {
+        id: 'r1',
+        vetId: 'v1',
+        content: '根据你提交的体征数据，布丁体温 38.5°C、心率 96 次/分都在正常范围内。食欲下降同时伴偶尔哼唧，多考虑轻微胃肠不适或换粮应激，暂不严重。建议先调整饮食观察 2~3 天。',
+        medicines: [
+          { name: '宠物益生菌', usage: '每日 1 次，每次 1 袋，温水化开拌粮，连用 5 天' },
+          { name: '肠胃调理处方粮', usage: '替代日常主粮，喂食 3~5 天缓解肠胃负担' },
+        ],
+        repliedAt: Date.now() - 2 * 86400000 + 5 * 3600000,
+      },
+    ],
   },
   {
     id: 'c2',
@@ -677,8 +706,41 @@ export const consultations: Consultation[] = [
     status: 'active',
     pushedAt: Date.now() - 5 * 86400000,
     note: '雪球掉毛有点多，想确认下是否影响健康。',
+    images: [],
+    healthSnapshot: {
+      temperature: 38.4,
+      heartRate: 148,
+      spo2: 99,
+      respiratoryRate: 26,
+      activityPercent: 35,
+      sleepHours: 13.5,
+      updatedAt: Date.now() - 5 * 86400000 + 3600000,
+    },
+    exerciseSnapshot: {
+      stepFreq: 46,
+      stride: 16,
+      gait: 'rest',
+      speed: 0.1,
+      updatedAt: Date.now() - 5 * 86400000 + 3600000,
+    },
+    replies: [
+      {
+        id: 'r2',
+        vetId: 'v1',
+        content: '雪球各项生命体征正常，掉毛多为季节性换毛，与健康无碍。注意每日梳毛减少毛球风险，可适量补充鱼油改善皮毛质量。',
+        medicines: [
+          { name: '深海鱼油（宠物专用）', usage: '每日 1 粒，挤破拌入食物' },
+          { name: '化毛膏', usage: '每周 2~3 次，每次 3~5cm，帮助排出毛球' },
+        ],
+        repliedAt: Date.now() - 5 * 86400000 + 6 * 3600000,
+      },
+    ],
   },
 ]
+
+export function findConsultationById(id: string): Consultation | undefined {
+  return consultations.find((c) => c.id === id)
+}
 
 export function findVetById(id: string): VetInfo | undefined {
   return vets.find((v) => v.id === id)
@@ -934,16 +996,16 @@ function addDictItem(data: Omit<DictItem, 'id'>): DictItem {
   dictItems.push(it)
   return it
 }
-addDictItem({ typeId: 'd1', label: '弟弟', value: 'male', sort: 1, status: 'active' })
-addDictItem({ typeId: 'd1', label: '妹妹', value: 'female', sort: 2, status: 'active' })
-addDictItem({ typeId: 'd2', label: '启用', value: 'active', sort: 1, status: 'active' })
-addDictItem({ typeId: 'd2', label: '禁用', value: 'disabled', sort: 2, status: 'active' })
+addDictItem({ typeId: 'd1', label: '弟弟', value: 'male', sort: 1, status: 'active', extValue: '{"emoji":"♂","icon":"mars"}' })
+addDictItem({ typeId: 'd1', label: '妹妹', value: 'female', sort: 2, status: 'active', extValue: '{"emoji":"♀","icon":"venus"}' })
+addDictItem({ typeId: 'd2', label: '启用', value: 'active', sort: 1, status: 'active', extValue: '{"color":"success"}' })
+addDictItem({ typeId: 'd2', label: '禁用', value: 'disabled', sort: 2, status: 'disabled', extValue: '{"color":"danger"}' })
 addDictItem({ typeId: 'd3', label: '成功', value: 'success', sort: 1, status: 'active' })
 addDictItem({ typeId: 'd3', label: '失败', value: 'failed', sort: 2, status: 'active' })
-addDictItem({ typeId: 'd4', label: '移动端 APP', value: 'app', sort: 1, status: 'active' })
+addDictItem({ typeId: 'd4', label: '移动端 APP', value: 'app', sort: 1, status: 'active', extValue: '{"os":"iOS/Android"}' })
 addDictItem({ typeId: 'd4', label: 'H5', value: 'h5', sort: 2, status: 'active' })
-addDictItem({ typeId: 'd4', label: '小程序', value: 'mini', sort: 3, status: 'active' })
-addDictItem({ typeId: 'd4', label: 'PC 端', value: 'pc', sort: 4, status: 'active' })
+addDictItem({ typeId: 'd4', label: '小程序', value: 'mini', sort: 3, status: 'active', extValue: '{"platform":"wechat"}' })
+addDictItem({ typeId: 'd4', label: 'PC 端', value: 'pc', sort: 4, status: 'active', extValue: '{"os":"Windows/macOS"}' })
 
 // 登录日志
 const LOG_SEEDS: Array<Omit<LoginLog, 'id' | 'loginAt'>> = [

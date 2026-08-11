@@ -4,10 +4,15 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showToast } from 'vant'
 import { getDoctorPatientsApi, getPetDetailApi, type PatientRow, type PetDetail } from '@/api/modules/pet'
-import { getDoctorConsultationsApi, type ConsultationJoined } from '@/api/modules/consultation'
+import {
+  getDoctorConsultationsApi,
+  replyConsultationApi,
+  type ConsultationJoined,
+} from '@/api/modules/consultation'
 import { SPECIES_ICON, GENDER_LABEL, DEVICE_STATUS, toVantTagType } from '@/utils/consts'
 import { ageOf, formatDateTime } from '@/utils/format'
 import { petAvatarSrc } from '@/utils/petAvatar'
+import type { ConsultationMedicine } from '@/types'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -82,6 +87,50 @@ async function openDetail(row: PatientRow) {
     detailLoading.value = false
   }
 }
+
+/* ---------- 回复问诊 ---------- */
+const replyVisible = ref(false)
+const replyTarget = ref<ConsultationJoined | null>(null)
+const replyContent = ref('')
+const replyMedicines = ref<ConsultationMedicine[]>([])
+const replySending = ref(false)
+
+function openReply(c: ConsultationJoined) {
+  replyTarget.value = c
+  replyContent.value = ''
+  replyMedicines.value = []
+  replyVisible.value = true
+}
+
+function addMedicine() {
+  replyMedicines.value.push({ name: '', usage: '' })
+}
+
+function removeMedicine(i: number) {
+  replyMedicines.value.splice(i, 1)
+}
+
+async function submitReply() {
+  if (!replyTarget.value) return
+  if (!replyContent.value.trim()) {
+    showToast(t('doctor.patients.replyEmpty'))
+    return
+  }
+  replySending.value = true
+  try {
+    await replyConsultationApi(replyTarget.value.id, {
+      content: replyContent.value.trim(),
+      medicines: replyMedicines.value.filter((m) => m.name.trim()),
+    })
+    showToast(t('doctor.patients.replySuccess'))
+    replyVisible.value = false
+    await loadConsults()
+  } catch (e) {
+    showToast((e as Error).message || t('common.opFailed'))
+  } finally {
+    replySending.value = false
+  }
+}
 </script>
 
 <template>
@@ -132,6 +181,7 @@ async function openDetail(row: PatientRow) {
               <div class="consult-name">
                 {{ SPECIES_ICON[c.pet.species] }} {{ c.pet.name }}
                 <van-tag round type="primary" class="ml-8">{{ t('doctor.patients.consultations') }}</van-tag>
+                <van-tag v-if="c.replies.length" round plain type="success" class="ml-8">{{ t('doctor.patients.replied') }}</van-tag>
               </div>
               <div class="consult-sub">
                 {{ c.pet.breed }} · {{ t(GENDER_LABEL[c.pet.gender]) }} · {{ t('common.yearsOld', { n: ageOf(c.pet.birthDate) }) }}
@@ -156,7 +206,12 @@ async function openDetail(row: PatientRow) {
 
           <div class="consult-foot">
             <span class="consult-time">{{ t('doctor.patients.pushedAt', { time: formatDateTime(c.pushedAt) }) }}</span>
-            <van-button size="mini" round plain type="primary">{{ t('doctor.patients.viewHealth') }}</van-button>
+            <div class="consult-actions">
+              <van-button size="mini" round plain type="primary" @click.stop="openReply(c)">
+                {{ t('doctor.patients.reply') }}
+              </van-button>
+              <van-button size="mini" round plain type="default">{{ t('doctor.patients.viewHealth') }}</van-button>
+            </div>
           </div>
         </div>
 
@@ -222,6 +277,64 @@ async function openDetail(row: PatientRow) {
             <div class="text-secondary fs-12">{{ detail.owner.phone }}</div>
           </div>
         </div>
+      </template>
+    </van-popup>
+
+    <!-- 回复问诊弹层 -->
+    <van-popup
+      v-model:show="replyVisible"
+      position="bottom"
+      round
+      safe-area-inset-bottom
+      class="reply-popup"
+    >
+      <template v-if="replyTarget">
+        <div class="reply-head">
+          <div class="reply-title">{{ t('doctor.patients.reply') }}</div>
+          <div class="reply-pet">
+            {{ SPECIES_ICON[replyTarget.pet.species] }} {{ replyTarget.pet.name }}
+            <span class="reply-owner">· {{ replyTarget.owner?.name ?? '-' }}</span>
+          </div>
+        </div>
+
+        <div v-if="replyTarget.note" class="reply-note">
+          <span class="note-label">{{ t('doctor.patients.consultationContent') }}</span>
+          {{ replyTarget.note }}
+        </div>
+
+        <div class="reply-field-title">{{ t('doctor.patients.replyContent') }} <span class="required">*</span></div>
+        <van-field
+          v-model="replyContent"
+          type="textarea"
+          rows="4"
+          autosize
+          maxlength="500"
+          show-word-limit
+          class="reply-textarea"
+          :placeholder="t('doctor.patients.replyContentPlaceholder')"
+        />
+
+        <div class="reply-field-title">{{ t('doctor.patients.medicine') }}</div>
+        <div v-for="(m, i) in replyMedicines" :key="i" class="med-row">
+          <van-field v-model="m.name" :placeholder="t('doctor.patients.medicineNamePlaceholder')" class="med-name" />
+          <van-field v-model="m.usage" :placeholder="t('doctor.patients.medicineUsagePlaceholder')" class="med-usage" />
+          <van-icon name="delete-o" color="#f56c6c" class="med-del" @click="removeMedicine(i)" />
+        </div>
+        <van-button size="small" plain round icon="plus" class="med-add" @click="addMedicine">
+          {{ t('doctor.patients.addMedicine') }}
+        </van-button>
+
+        <van-button
+          round
+          block
+          type="primary"
+          color="#00b4a6"
+          class="reply-submit"
+          :loading="replySending"
+          @click="submitReply"
+        >
+          {{ t('common.submit') }}
+        </van-button>
       </template>
     </van-popup>
   </div>
@@ -333,10 +446,105 @@ async function openDetail(row: PatientRow) {
       font-size: 11px;
       color: var(--sp-text-placeholder);
     }
+    .consult-actions {
+      display: flex;
+      gap: 8px;
+    }
   }
 }
 .ml-8 {
   margin-left: 8px;
+}
+
+/* ---- 回复问诊弹层 ---- */
+.reply-popup {
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  max-height: 85%;
+  overflow-y: auto;
+
+  .reply-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+
+    .reply-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .reply-pet {
+      font-size: 13px;
+      color: var(--sp-text-secondary);
+
+      .reply-owner {
+        color: var(--sp-text-placeholder);
+      }
+    }
+  }
+
+  .reply-note {
+    font-size: 13px;
+    color: var(--sp-text);
+    background: var(--sp-bg);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+
+    .note-label {
+      color: var(--sp-primary);
+      font-weight: 600;
+      margin-right: 4px;
+    }
+  }
+
+  .reply-field-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 12px 0 6px;
+
+    .required {
+      color: #f56c6c;
+    }
+  }
+
+  .reply-textarea {
+    background: var(--sp-bg);
+    border-radius: 8px;
+  }
+
+  .med-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .med-name {
+      flex: 2;
+      background: var(--sp-bg);
+      border-radius: 8px;
+    }
+
+    .med-usage {
+      flex: 3;
+      background: var(--sp-bg);
+      border-radius: 8px;
+    }
+
+    .med-del {
+      flex-shrink: 0;
+      padding: 6px;
+    }
+  }
+
+  .med-add {
+    margin-top: 8px;
+    color: var(--sp-primary);
+    border-color: var(--sp-primary);
+  }
+
+  .reply-submit {
+    margin-top: 16px;
+  }
 }
 
 .patient-detail {

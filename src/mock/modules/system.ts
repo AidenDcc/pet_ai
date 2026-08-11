@@ -366,6 +366,7 @@ defineMock([
         value: String(body.value).trim(),
         sort: Number(body.sort ?? 0),
         status: body.status === 'disabled' ? 'disabled' : 'active',
+        extValue: String(body.extValue ?? ''),
       }
       dictItems.push(item)
       return item
@@ -386,6 +387,7 @@ defineMock([
         value: patch.value ?? item.value,
         sort: patch.sort ?? item.sort,
         status: patch.status ?? item.status,
+        extValue: patch.extValue ?? item.extValue ?? '',
       })
       return item
     },

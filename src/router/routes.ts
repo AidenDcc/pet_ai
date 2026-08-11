@@ -60,12 +60,34 @@ export const userRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/user/CommunityDetail.vue'),
         meta: { titleKey: 'nav.communityDetail' },
       },
-      // 首页功能占位页（在线问诊/爱宠食谱/宠语翻译/健康自检/萌宠相册/爱宠记账/待办记录）
+      // 在线问诊入口：优先展示问诊记录，右下角「问诊」悬浮按钮进入选医生界面
       {
         path: 'consult',
         name: 'user-consult',
+        component: () => import('@/views/user/ConsultRecords.vue'),
+        meta: { titleKey: 'user.consult.recordsTitle' },
+      },
+      {
+        path: 'consult/doctors',
+        name: 'user-consult-doctors',
         component: () => import('@/views/user/Consult.vue'),
         meta: { titleKey: 'nav.consult' },
+      },
+      {
+        path: 'consult/compose',
+        name: 'user-consult-compose',
+        component: () => import('@/views/user/ConsultCompose.vue'),
+        meta: { titleKey: 'user.consult.composeTitle' },
+      },
+      {
+        path: 'consult/records',
+        redirect: '/user/consult',
+      },
+      {
+        path: 'consult/records/:id',
+        name: 'user-consult-record-detail',
+        component: () => import('@/views/user/ConsultDetail.vue'),
+        meta: { titleKey: 'user.consult.detailTitle' },
       },
       {
         path: 'recipes',

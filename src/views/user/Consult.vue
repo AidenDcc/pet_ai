@@ -4,13 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showToast } from 'vant'
 import { getMyPetsApi, type PetJoined } from '@/api/modules/pet'
-import {
-  getDoctorsApi,
-  getMyConsultationsApi,
-  pushConsultationApi,
-  type ConsultationMine,
-} from '@/api/modules/consultation'
-import { formatDateTime } from '@/utils/format'
+import { getDoctorsApi } from '@/api/modules/consultation'
 import { petAvatarSrc } from '@/utils/petAvatar'
 import type { DoctorBrief } from '@/types'
 
@@ -64,12 +58,11 @@ async function loadDoctors() {
 }
 loadDoctors()
 
-/* ---------- 马上咨询：选择宠物并推送健康数据 ---------- */
+/* ---------- 马上咨询：选择宠物后跳转咨询界面 ---------- */
 const pets = ref<PetJoined[]>([])
 const activeDoctor = ref<DoctorBrief | null>(null)
 const selectedPet = ref('')
 const petPickerVisible = ref(false)
-const pushing = ref(false)
 
 async function openPush(d: DoctorBrief) {
   activeDoctor.value = d
@@ -90,41 +83,17 @@ async function openPush(d: DoctorBrief) {
   petPickerVisible.value = true
 }
 
-async function doPush() {
+/** 确认选择：跳转到咨询填写界面 */
+function goCompose() {
   if (!activeDoctor.value || !selectedPet.value) return
-  pushing.value = true
-  try {
-    await pushConsultationApi({ petId: selectedPet.value, doctorId: activeDoctor.value.id })
-    showToast(t('user.profile.pushSuccess', { doctor: activeDoctor.value.name }))
-    petPickerVisible.value = false
-  } catch (e) {
-    showToast((e as Error).message || t('common.opFailed'))
-  } finally {
-    pushing.value = false
-  }
-}
-
-/* ---------- 我的问诊记录（搜索栏右上角气泡） ---------- */
-const consultsVisible = ref(false)
-const consults = ref<ConsultationMine[]>([])
-const consultsLoading = ref(false)
-
-async function openMyConsults() {
-  consultsVisible.value = true
-  consultsLoading.value = true
-  try {
-    consults.value = await getMyConsultationsApi()
-  } catch (e) {
-    showToast((e as Error).message || t('common.loadFailed'))
-  } finally {
-    consultsLoading.value = false
-  }
+  petPickerVisible.value = false
+  router.push({ path: '/user/consult/compose', query: { doctorId: activeDoctor.value.id, petId: selectedPet.value } })
 }
 </script>
 
 <template>
   <div class="consult-page">
-    <!-- 顶部搜索栏：浅黄描边圆角输入框 + 右上角对话气泡 -->
+    <!-- 顶部搜索栏：浅黄描边圆角输入框 -->
     <div class="search-bar">
       <svg class="search-icon" viewBox="0 0 48 48" width="18" height="18" aria-hidden="true">
         <g fill="none" stroke="#f0a500" stroke-width="4" stroke-linecap="round">
@@ -138,19 +107,6 @@ async function openMyConsults() {
         type="search"
         :placeholder="t('user.consult.searchPlaceholder')"
       />
-      <button class="msg-btn" type="button" :aria-label="t('user.consult.myConsults')" @click="openMyConsults">
-        <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true">
-          <path
-            d="M24 6 C14.2 6 7 13.2 7 21 a14 14 0 0 0 6.4 11.5 V41 a2 2 0 0 0 3.3 1.5 L20.8 39 a17 17 0 0 0 3.2 0 c9.8 0 17 -7.2 17 -18 C41 13.2 33.8 6 24 6 Z"
-            fill="#2b2b2b"
-          />
-          <g fill="#fff">
-            <circle cx="17" cy="21" r="2.6" />
-            <circle cx="24" cy="21" r="2.6" />
-            <circle cx="31" cy="21" r="2.6" />
-          </g>
-        </svg>
-      </button>
     </div>
 
     <!-- 科室分类：横向滑动 -->
@@ -224,41 +180,10 @@ async function openMyConsults() {
         </div>
       </div>
       <div class="popup-foot">
-        <van-button
-          round
-          block
-          color="#ffd54a"
-          :loading="pushing"
-          @click="doPush"
-        >
+        <van-button round block color="#ffd54a" @click="goCompose">
           <span class="btn-text">{{ t('common.confirm') }}</span>
         </van-button>
       </div>
-    </van-popup>
-
-    <!-- 我的问诊记录 -->
-    <van-popup
-      v-model:show="consultsVisible"
-      position="bottom"
-      round
-      safe-area-inset-bottom
-      class="consults-popup"
-    >
-      <div class="popup-title">{{ t('user.consult.myConsults') }}</div>
-      <van-skeleton v-if="consultsLoading" :row="4" class="mt-8" />
-      <template v-else>
-        <div v-for="c in consults" :key="c.id" class="cons-item">
-          <van-image round width="36" height="36" :src="petAvatarSrc(c.pet?.name) || c.pet?.avatar || ''" />
-          <div class="cons-main">
-            <div class="cons-name">{{ c.pet?.name ?? '-' }}</div>
-            <div class="cons-sub">{{ c.vetName ?? '-' }} · {{ formatDateTime(c.pushedAt) }}</div>
-          </div>
-          <van-tag round :type="c.status === 'active' ? 'primary' : 'default'">
-            {{ c.status === 'active' ? t('user.consult.statusActive') : t('user.consult.statusClosed') }}
-          </van-tag>
-        </div>
-        <van-empty v-if="!consults.length" :description="t('user.consult.noConsults')" />
-      </template>
     </van-popup>
   </div>
 </template>
@@ -298,19 +223,6 @@ async function openMyConsults() {
     &::placeholder {
       color: #b6ad98;
     }
-  }
-
-  .msg-btn {
-    flex-shrink: 0;
-    width: 34px;
-    height: 34px;
-    border: none;
-    border-radius: 50%;
-    background: #fff6df;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
   }
 }
 
@@ -526,42 +438,7 @@ async function openMyConsults() {
   font-weight: 700;
 }
 
-.consults-popup {
-  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
-  max-height: 70%;
-  overflow-y: auto;
-}
-
-.cons-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 2px;
-  border-bottom: 1px solid #f5f0e3;
-
-  .cons-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .cons-name {
-    font-size: 15px;
-    font-weight: 600;
-    color: #2b2b2b;
-  }
-
-  .cons-sub {
-    margin-top: 2px;
-    font-size: 11px;
-    color: #8a7a5a;
-  }
-}
-
 .mt-12 {
   margin-top: 12px;
-}
-
-.mt-8 {
-  margin-top: 8px;
 }
 </style>

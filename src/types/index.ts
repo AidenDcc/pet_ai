@@ -278,6 +278,41 @@ export interface UploadRecord {
  * 问诊（健康数据推送）
  * ============================================================ */
 
+/** 问诊回复中推荐的用药 */
+export interface ConsultationMedicine {
+  name: string
+  usage: string
+}
+
+/** 问诊回复（医生端） */
+export interface ConsultationReply {
+  id: string
+  vetId: string
+  content: string
+  medicines: ConsultationMedicine[]
+  repliedAt: number
+}
+
+/** 问诊时提交的宠物体征快照 */
+export interface ConsultationHealthSnapshot {
+  temperature: number
+  heartRate: number
+  spo2: number
+  respiratoryRate: number
+  activityPercent: number
+  sleepHours: number
+  updatedAt: number
+}
+
+/** 问诊时提交的宠物运动快照 */
+export interface ConsultationExerciseSnapshot {
+  stepFreq: number
+  stride: number
+  gait: string
+  speed: number
+  updatedAt: number
+}
+
 /** 问诊记录：宠物主将宠物健康数据推送给某医生 */
 export interface Consultation {
   id: string
@@ -286,7 +321,16 @@ export interface Consultation {
   doctorId: string
   status: 'active' | 'closed'
   pushedAt: number
+  /** 咨询内容 */
   note: string | null
+  /** 宠物主上传的图片（base64 dataURL） */
+  images: string[]
+  /** 提交时的宠物体征快照 */
+  healthSnapshot: ConsultationHealthSnapshot | null
+  /** 提交时的宠物运动快照 */
+  exerciseSnapshot: ConsultationExerciseSnapshot | null
+  /** 医生回复（按时间正序） */
+  replies: ConsultationReply[]
 }
 
 /** 医生简要信息（推送时选择医生） */
@@ -444,6 +488,8 @@ export interface DictItem {
   value: string
   sort: number
   status: 'active' | 'disabled'
+  /** 扩展值（JSON 串，选填） */
+  extValue?: string
 }
 
 /** 登录日志 */

@@ -9,7 +9,7 @@ import { getHealthSummaryApi, type HealthSummary } from '@/api/modules/health'
 import { getFencesApi, type PetFence } from '@/api/modules/fence'
 import { getExerciseSummaryApi, type ExerciseState } from '@/api/modules/exercise'
 import Amap from '@/components/Amap.vue'
-import { SPECIES_ICON } from '@/utils/consts'
+import { SPECIES_ICON, DEVICE_STATUS } from '@/utils/consts'
 import { petAvatarSrc } from '@/utils/petAvatar'
 
 const router = useRouter()
@@ -109,6 +109,13 @@ function getGaitLabel(gait: string): string {
   return t(key) || gait
 }
 
+/** 电量配色：>50 绿、>20 橙、≤20 红 */
+function batteryColor(b: number) {
+  if (b > 50) return '#4cd964'
+  if (b > 20) return '#ff9500'
+  return '#ff3b30'
+}
+
 loadAll()
 </script>
 
@@ -159,8 +166,22 @@ loadAll()
       <div class="panel-pet-header">
         <img class="panel-avatar" :src="petAvatarSrc(activePet.name) || activePet.avatar" :alt="activePet.name" />
         <div class="panel-pet-info">
-          <div class="panel-pet-name">
-            {{ SPECIES_ICON[activePet.species] }} {{ activePet.name }}
+          <div class="panel-pet-name-row">
+            <div class="panel-pet-name">
+              {{ SPECIES_ICON[activePet.species] }} {{ activePet.name }}
+            </div>
+            <!-- 设备信息：昵称右侧，靠右距面板边缘 20px -->
+            <div v-if="activeDevice" class="panel-device">
+              <span class="dev-name">{{ t('user.sync.collarOf', { name: activePet.name }) }}</span>
+              <span class="dev-status" :class="`is-${activeDevice.status}`">
+                <i class="dev-dot" />
+                {{ t(DEVICE_STATUS[activeDevice.status].labelKey) }}
+              </span>
+              <span class="dev-battery" :style="{ color: batteryColor(activeDevice.battery) }">
+                {{ activeDevice.battery }}%
+              </span>
+            </div>
+            <span v-else class="panel-device panel-device--none">{{ t('user.health.deviceUnbound') }}</span>
           </div>
           <div class="panel-pet-pos">
             <span class="pos-dot" />
@@ -343,10 +364,74 @@ loadAll()
     background: #eef1f5;
   }
 
+  .panel-pet-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .panel-pet-name-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-right: 4px; /* 面板右内边距 16px + 4px = 距右边缘 20px */
+    min-width: 0;
+  }
+
   .panel-pet-name {
     font-size: 16px;
     font-weight: 700;
     color: #333;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 设备信息：设备名 + 状态 + 电量 */
+  .panel-device {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    font-size: 10px;
+
+    .dev-name {
+      max-width: 88px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #666;
+    }
+
+    .dev-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+
+      .dev-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      &.is-online { color: #4cd964; }
+      &.is-offline { color: #b0b6bf; }
+      &.is-low-power { color: #ff9500; }
+      &.is-unbound { color: #ff3b30; }
+    }
+
+    .dev-battery {
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    &--none {
+      color: #b0b6bf;
+      flex-shrink: 0;
+    }
   }
 
   .panel-pet-pos {

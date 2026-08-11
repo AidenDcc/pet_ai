@@ -157,26 +157,47 @@ interface ItemForm {
   value: string
   sort: number
   status: 'active' | 'disabled'
+  extValue: string
 }
 const itemFormRef = ref<FormInstance>()
-const itemForm = reactive<ItemForm>({ label: '', value: '', sort: 0, status: 'active' })
+const itemForm = reactive<ItemForm>({ label: '', value: '', sort: 0, status: 'active', extValue: '' })
+
+/** 扩展值为选填，但若填写必须是合法 JSON */
+function validateExtValue(_rule: unknown, value: string, callback: (error?: Error) => void) {
+  const v = (value ?? '').trim()
+  if (!v) return callback()
+  try {
+    JSON.parse(v)
+    callback()
+  } catch {
+    callback(new Error(t('admin.dicts.extValueInvalid')))
+  }
+}
+
 const itemRules = computed<FormRules>(() => ({
   label: [{ required: true, message: t('admin.dicts.itemLabelRequired'), trigger: 'blur' }],
   value: [{ required: true, message: t('admin.dicts.itemValueRequired'), trigger: 'blur' }],
+  extValue: [{ validator: validateExtValue, trigger: 'blur' }],
 }))
 
 function openAddItem() {
   if (!currentTypeId.value) return
   itemIsEdit.value = false
   itemEditingId.value = ''
-  Object.assign(itemForm, { label: '', value: '', sort: 0, status: 'active' })
+  Object.assign(itemForm, { label: '', value: '', sort: 0, status: 'active', extValue: '' })
   itemDialogVisible.value = true
 }
 
 function openEditItem(row: DictItem) {
   itemIsEdit.value = true
   itemEditingId.value = row.id
-  Object.assign(itemForm, { label: row.label, value: row.value, sort: row.sort, status: row.status })
+  Object.assign(itemForm, {
+    label: row.label,
+    value: row.value,
+    sort: row.sort,
+    status: row.status,
+    extValue: row.extValue ?? '',
+  })
   itemDialogVisible.value = true
 }
 
@@ -302,11 +323,14 @@ onMounted(loadTypes)
               <el-table v-loading="itemLoading" :data="pagedItems" stripe size="small">
                 <el-table-column prop="label" :label="t('admin.dicts.itemLabel')" min-width="140" />
                 <el-table-column prop="value" :label="t('admin.dicts.itemValue')" min-width="140" />
+                <el-table-column :label="t('admin.dicts.extValue')" min-width="160" show-overflow-tooltip>
+                  <template #default="{ row }">{{ row.extValue || '-' }}</template>
+                </el-table-column>
                 <el-table-column prop="sort" :label="t('admin.dicts.itemSort')" width="70" />
                 <el-table-column :label="t('common.status')" width="90">
                   <template #default="{ row }">
                     <el-tag size="small" :type="row.status === 'active' ? 'success' : 'danger'" effect="plain">
-                      {{ row.status === 'active' ? t('status.active') : t('status.disabled') }}
+                      {{ row.status === 'active' ? t('admin.dicts.statusActive') : t('admin.dicts.statusDisabled') }}
                     </el-tag>
                   </template>
                 </el-table-column>
@@ -373,13 +397,21 @@ onMounted(loadTypes)
         <el-form-item :label="t('admin.dicts.itemValue')" prop="value">
           <el-input v-model="itemForm.value" />
         </el-form-item>
+        <el-form-item :label="t('admin.dicts.extValue')" prop="extValue">
+          <el-input
+            v-model="itemForm.extValue"
+            type="textarea"
+            :rows="2"
+            :placeholder="t('admin.dicts.extValuePlaceholder')"
+          />
+        </el-form-item>
         <el-form-item :label="t('admin.dicts.itemSort')" prop="sort">
           <el-input-number v-model="itemForm.sort" :min="0" :max="999" />
         </el-form-item>
         <el-form-item :label="t('common.status')" prop="status">
           <el-radio-group v-model="itemForm.status">
-            <el-radio value="active">{{ t('status.active') }}</el-radio>
-            <el-radio value="disabled">{{ t('status.disabled') }}</el-radio>
+            <el-radio value="active">{{ t('admin.dicts.statusActive') }}</el-radio>
+            <el-radio value="disabled">{{ t('admin.dicts.statusDisabled') }}</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>

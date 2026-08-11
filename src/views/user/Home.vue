@@ -44,6 +44,13 @@ function selectPet(i: number) {
   activeIndex.value = i
 }
 
+/** 核心宠物信息大卡片：点击进入宠物详情（与「我的宠物」列表详情一致） */
+function goPetDetail() {
+  const pet = activePet.value
+  if (!pet) return
+  router.push(`/user/pet/${pet.id}`)
+}
+
 /** 顶部汉堡菜单：语言切换 / 宠物管理 */
 const showMenu = ref(false)
 const showLang = ref(false)
@@ -117,8 +124,12 @@ function onLangSelect(action: { value: AppLocale } | undefined) {
           </div>
         </div>
 
-        <!-- 核心宠物信息大卡片 -->
-        <section v-if="activePet" class="hero-card">
+        <!-- 核心宠物信息大卡片：点击查看宠物详情 -->
+        <section v-if="activePet" class="hero-card" @click="goPetDetail">
+          <span class="hero-more">
+            {{ t('nav.petProfile') }}
+            <van-icon name="arrow" size="12" />
+          </span>
           <div class="hero-main">
             <div class="hero-info">
               <div class="hero-name">
@@ -395,9 +406,27 @@ function onLangSelect(action: { value: AppLocale } | undefined) {
 
 /* ---- 亮黄大卡片 ---- */
 .hero-card {
+  position: relative;
   background: #ffd54a;
   border-radius: 22px;
   padding: 16px 14px 12px;
+  cursor: pointer;
+}
+
+/* 右上角「宠物档案」入口提示 */
+.hero-more {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #7a5a12;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: 999px;
+  padding: 3px 9px;
 }
 
 .hero-main {

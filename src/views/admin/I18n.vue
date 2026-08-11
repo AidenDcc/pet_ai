@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18nStore } from '@/stores/i18n'
@@ -15,6 +15,10 @@ interface Row extends I18nEntry {
 const rows = ref<Row[]>([])
 const keyword = ref('')
 const loading = ref(false)
+
+/** 分页 */
+const page = ref(1)
+const pageSize = ref(20)
 
 /** 从 store 重建表格行（isOverride 由 overrides 集合判定） */
 function buildRows() {
@@ -39,7 +43,28 @@ const filtered = computed(() => {
   )
 })
 
+/** 当前页数据 */
+const paged = computed(() => {
+  const start = (page.value - 1) * pageSize.value
+  return filtered.value.slice(start, start + pageSize.value)
+})
+
 const overrideCount = computed(() => rows.value.filter((r) => r.isOverride).length)
+
+// 搜索词变化回到第一页
+watch(keyword, () => {
+  page.value = 1
+})
+
+// 列表变短（删除/搜索）时钳制页码，避免停留在空页
+watch(filtered, (list) => {
+  const max = Math.max(1, Math.ceil(list.length / pageSize.value))
+  if (page.value > max) page.value = max
+})
+
+function onPageSizeChange() {
+  page.value = 1
+}
 
 async function load() {
   loading.value = true
@@ -52,6 +77,7 @@ async function load() {
 }
 
 function addEntry() {
+  page.value = 1
   rows.value.unshift({ key: '', zh: '', en: '', isOverride: false, isNew: true })
 }
 
@@ -121,7 +147,7 @@ onMounted(load)
         </el-tag>
       </div>
 
-      <el-table v-loading="loading" :data="filtered" stripe size="small">
+      <el-table v-loading="loading" :data="paged" stripe size="small">
         <el-table-column :label="t('admin.i18n.key')" min-width="200">
           <template #default="{ row }">
             <el-input v-model="row.key" :disabled="!row.isNew" size="small" />
@@ -160,6 +186,18 @@ onMounted(load)
       </el-table>
 
       <el-empty v-if="!loading && filtered.length === 0" :description="t('admin.i18n.empty')" :image-size="80" />
+
+      <div v-if="filtered.length > 0" class="pager">
+        <el-pagination
+          v-model:current-page="page"
+          v-model:page-size="pageSize"
+          :total="filtered.length"
+          :page-sizes="[20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
+          background
+          @size-change="onPageSizeChange"
+        />
+      </div>
     </el-card>
   </div>
 </template>
@@ -173,6 +211,11 @@ onMounted(load)
 }
 .spacer {
   flex: 1;
+}
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 .stat-line {
   display: flex;
