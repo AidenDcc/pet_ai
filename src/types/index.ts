@@ -81,6 +81,8 @@ export interface PetFence {
   radius: number
   enabled: boolean
   createdAt: number
+  /** 围栏类型：fixed 固定中心点（地图选点）/ dynamic 动态中心点（以手机实时定位为中心，仅一条） */
+  type?: 'fixed' | 'dynamic'
   /** 中心点物理地址（省市区，mock 生成，用于列表展示） */
   address?: string
 }

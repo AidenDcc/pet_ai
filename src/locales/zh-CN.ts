@@ -485,6 +485,14 @@ export default {
       fenceSaved: '围栏已保存',
       fenceDeleted: '围栏已删除',
       saveFence: '保存围栏',
+      // 动态中心点围栏（以手机实时定位为中心）
+      followPhone: '跟随手机',
+      dynamicFenceDesc: '以手机实时定位为中心，宠物与手机的距离保持在半径内',
+      currentDistance: '当前距离',
+      insideFence: '在围栏内',
+      outsideFence: '已超出围栏',
+      fenceClosed: '已关闭',
+      adjustRadius: '调整半径',
       // 运动指标
       exercise: '运动',
       exerciseTrend: '运动趋势',

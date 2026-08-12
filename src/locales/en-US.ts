@@ -485,6 +485,14 @@ export default {
       fenceSaved: 'Fence saved',
       fenceDeleted: 'Fence deleted',
       saveFence: 'Save fence',
+      // Dynamic fence (centered on the phone's live location)
+      followPhone: 'Follow my phone',
+      dynamicFenceDesc: 'Centered on your phone\'s live location — your pet must stay within this radius',
+      currentDistance: 'Current distance',
+      insideFence: 'Inside fence',
+      outsideFence: 'Beyond fence',
+      fenceClosed: 'Disabled',
+      adjustRadius: 'Adjust radius',
       // Exercise metrics
       exercise: 'Exercise',
       exerciseTrend: 'Exercise trends',

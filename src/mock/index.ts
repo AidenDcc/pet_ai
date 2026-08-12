@@ -16,6 +16,7 @@ import './modules/community'
 import './modules/bi'
 import './modules/i18n'
 import './modules/fence'
+import './modules/location'
 import './modules/exercise'
 import './modules/system'
 

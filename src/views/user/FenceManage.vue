@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showToast, showDialog } from 'vant'
 import { getFencesApi, createFenceApi, updateFenceApi, deleteFenceApi, type PetFence } from '@/api/modules/fence'
+import { getDeviceListApi, getDeviceTrackApi, type DeviceJoined } from '@/api/modules/device'
+import { getMyLocationApi } from '@/api/modules/location'
+import { haversineMeters, buildMapFences } from '@/utils/geo'
+import type { GeoPoint } from '@/types'
 import Amap from '@/components/Amap.vue'
 
 const route = useRoute()
@@ -14,7 +18,12 @@ const fences = ref<PetFence[]>([])
 const loading = ref(false)
 const saving = ref(false)
 
-// 添加/编辑弹窗
+// 手机实时定位 + 宠物位置（用于动态围栏的距离与状态）
+const devices = ref<DeviceJoined[]>([])
+const track = ref<GeoPoint[]>([])
+const phoneLoc = ref<{ lat: number; lng: number } | null>(null)
+
+// 添加/编辑（固定围栏）弹窗
 const showForm = ref(false)
 const editingFence = ref<PetFence | null>(null)
 /** 地图选中心点模式：true 时点击地图设置围栏中心点 */
@@ -27,7 +36,32 @@ const form = ref({
   radius: 500,
 })
 
-/** 新增：先进入地图选点模式，点选中心点后再弹出设置 */
+// 动态围栏（跟随手机）：仅一条，只调整半径
+const showDynamicForm = ref(false)
+const dynamicRadius = ref(500)
+
+/** 固定中心点围栏（列表展示） */
+const fixedFences = computed(() => fences.value.filter((f) => f.type !== 'dynamic'))
+/** 动态中心点围栏（唯一一条） */
+const dynamicFence = computed(() => fences.value.find((f) => f.type === 'dynamic') ?? null)
+/** 宠物当前位置（轨迹最后一点） */
+const petPos = computed(() => track.value[track.value.length - 1] ?? null)
+/** 宠物 ↔ 手机 当前距离（米） */
+const distance = computed<number | null>(() => {
+  if (!phoneLoc.value || !petPos.value) return null
+  return Math.round(haversineMeters(phoneLoc.value, { lat: petPos.value.lat, lng: petPos.value.lng }))
+})
+/** 动态围栏状态：在围栏内 / 已超出 / 已关闭 / 定位中 */
+const dynStatus = computed<'closed' | 'inside' | 'outside' | 'unknown'>(() => {
+  const dyn = dynamicFence.value
+  if (!dyn || !dyn.enabled) return 'closed'
+  if (distance.value === null) return 'unknown'
+  return distance.value <= dyn.radius ? 'inside' : 'outside'
+})
+/** 地图渲染：动态围栏中心覆盖为手机实时定位 */
+const mapFences = computed(() => buildMapFences(fences.value, phoneLoc.value))
+
+/** 新增固定围栏：先进入地图选点模式，点选中心点后再弹出设置 */
 function openAdd() {
   editingFence.value = null
   form.value = { name: '', center: { lat: 31.2304, lng: 121.4737 }, radius: 500 }
@@ -79,6 +113,23 @@ async function loadFences() {
   }
 }
 
+/** 加载手机实时定位 + 宠物位置（供动态围栏距离计算） */
+async function loadLocation() {
+  try {
+    const devList = await getDeviceListApi()
+    devices.value = devList
+    const dev = devList.find((d) => d.boundPetId === petId)
+    if (dev) {
+      const t = await getDeviceTrackApi(dev.id)
+      track.value = t.points
+    }
+    const loc = await getMyLocationApi(petId)
+    phoneLoc.value = loc
+  } catch {
+    // 定位失败不阻塞页面
+  }
+}
+
 async function doSave() {
   if (!form.value.name.trim()) {
     showToast(t('user.health.fenceNamePlaceholder'))
@@ -106,6 +157,41 @@ async function doSave() {
   }
 }
 
+/** 动态围栏：调整半径 */
+function openDynamicEdit() {
+  dynamicRadius.value = dynamicFence.value?.radius ?? 500
+  showDynamicForm.value = true
+}
+
+async function saveDynamicRadius() {
+  const dyn = dynamicFence.value
+  if (!dyn) return
+  saving.value = true
+  try {
+    await updateFenceApi(petId, dyn.id, { radius: dynamicRadius.value })
+    showToast(t('user.health.fenceSaved'))
+    showDynamicForm.value = false
+    await loadFences()
+  } catch (e) {
+    showToast((e as Error).message || t('common.saveFailed'))
+  } finally {
+    saving.value = false
+  }
+}
+
+/** 动态围栏开关 */
+async function onToggleDynamic(enabled: boolean) {
+  const dyn = dynamicFence.value
+  if (!dyn) return
+  try {
+    await updateFenceApi(petId, dyn.id, { enabled })
+    // showToast(enabled ? t('user.health.geofenceOn', { radius: dyn.radius }) : t('user.health.fenceClosed'))
+    await loadFences()
+  } catch (e) {
+    // showToast((e as Error).message || t('common.opFailed'))
+  }
+}
+
 async function doDelete(fence: PetFence) {
   try {
     await showDialog({
@@ -129,6 +215,7 @@ async function doDelete(fence: PetFence) {
 
 onMounted(() => {
   loadFences()
+  loadLocation()
 })
 </script>
 
@@ -140,7 +227,7 @@ onMounted(() => {
         :points="[]"
         :center="null"
         :show-fence="false"
-        :fences="fences"
+        :fences="mapFences"
         :pick-mode="pickMode"
         :pick-marker="pickMarker"
         @pick-center="onPickCenter"
@@ -155,13 +242,40 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 围栏列表 -->
+    <!-- 动态中心点围栏（跟随手机，仅一条，只调整半径） -->
+    <div v-if="dynamicFence" class="dynamic-card sp-card">
+      <div class="df-top">
+        <div class="df-title">📱 {{ t('user.health.followPhone') }}</div>
+        <van-switch v-model="dynamicFence.enabled" size="20px" color="#2f7cf6" @change="onToggleDynamic" />
+      </div>
+
+      <div class="df-status">
+        <span class="df-distance">
+          {{ t('user.health.currentDistance') }}：
+          <strong>{{ distance !== null ? t('user.health.radiusMeter', { n: distance }) : '--' }}</strong>
+        </span>
+        <span v-if="dynStatus === 'inside'" class="df-badge is-inside">{{ t('user.health.insideFence') }}</span>
+        <span v-else-if="dynStatus === 'outside'" class="df-badge is-outside">{{ t('user.health.outsideFence') }}</span>
+        <span v-else-if="dynStatus === 'closed'" class="df-badge is-closed">{{ t('user.health.fenceClosed') }}</span>
+        <span v-else class="df-badge is-unknown">…</span>
+      </div>
+
+      <div class="df-desc">{{ t('user.health.dynamicFenceDesc') }}</div>
+
+      <div class="df-actions">
+        <van-button size="small" plain type="primary" icon="edit" @click="openDynamicEdit">
+          {{ t('user.health.adjustRadius') }}
+        </van-button>
+      </div>
+    </div>
+
+    <!-- 固定围栏列表 -->
     <div class="fence-list">
       <van-skeleton :loading="loading" :row="3" />
 
-      <van-empty v-if="!loading && !fences.length" :description="t('user.health.noFence')" />
+      <van-empty v-if="!loading && !fixedFences.length" :description="t('user.health.noFence')" />
 
-      <div v-for="fence in fences" :key="fence.id" class="fence-card sp-card">
+      <div v-for="fence in fixedFences" :key="fence.id" class="fence-card sp-card">
         <div class="fence-card-top">
           <div class="fence-name">{{ fence.name }}</div>
           <van-switch v-model="fence.enabled" size="20px" color="#ff6b00" @change="() => updateFenceApi(petId, fence.id, { enabled: fence.enabled })" />
@@ -177,14 +291,14 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 添加按钮 -->
+    <!-- 添加按钮（仅固定中心点围栏） -->
     <div class="add-bar">
       <van-button block round type="primary" icon="plus" @click="openAdd">
         {{ t('user.health.addFence') }}
       </van-button>
     </div>
 
-    <!-- 添加/编辑弹窗 -->
+    <!-- 固定围栏 添加/编辑弹窗 -->
     <van-popup v-model:show="showForm" position="bottom" round :style="{ padding: '24px 16px' }">
       <div class="form-title">
         {{ editingFence ? t('user.health.editFence') : t('user.health.addFence') }}
@@ -237,6 +351,41 @@ onMounted(() => {
         </van-button>
       </div>
     </van-popup>
+
+    <!-- 动态围栏：调整半径弹窗（仅半径，无名称/无选点） -->
+    <van-popup v-model:show="showDynamicForm" position="bottom" round :style="{ padding: '24px 16px' }">
+      <div class="form-title">📱 {{ t('user.health.adjustRadius') }}</div>
+      <div class="df-pop-desc">{{ t('user.health.dynamicFenceDesc') }}</div>
+
+      <div class="form-radius">
+        <div class="form-radius-label">
+          {{ t('user.health.fenceRadius') }}：<strong>{{ dynamicRadius }}m</strong>
+        </div>
+        <van-slider
+          v-model="dynamicRadius"
+          :min="100"
+          :max="3000"
+          :step="50"
+          bar-color="#2f7cf6"
+          active-color="#2f7cf6"
+        />
+        <div class="radius-presets">
+          <span
+            v-for="r in [200, 500, 800, 1500]"
+            :key="r"
+            class="preset"
+            :class="{ active: dynamicRadius === r }"
+            @click="dynamicRadius = r"
+          >{{ r }}m</span>
+        </div>
+      </div>
+
+      <div class="form-btns">
+        <van-button block round type="primary" :loading="saving" @click="saveDynamicRadius">
+          {{ t('user.health.saveFence') }}
+        </van-button>
+      </div>
+    </van-popup>
   </div>
 </template>
 
@@ -279,6 +428,72 @@ onMounted(() => {
     font-weight: 600;
     color: var(--sp-primary);
   }
+}
+
+/* 动态中心点围栏（跟随手机）卡片 */
+.dynamic-card {
+  margin: 12px 14px 0;
+  padding: 14px 16px;
+
+  .df-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .df-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #2f7cf6;
+    }
+  }
+
+  .df-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    font-size: 13px;
+
+    .df-distance {
+      color: var(--sp-text-secondary);
+
+      strong {
+        color: #333;
+        font-size: 15px;
+      }
+    }
+
+    .df-badge {
+      padding: 2px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+
+      &.is-inside { background: rgba(52, 199, 89, 0.12); color: #34c759; }
+      &.is-outside { background: rgba(255, 59, 48, 0.12); color: #ff3b30; }
+      &.is-closed { background: #f0f3f8; color: var(--sp-text-secondary); }
+      &.is-unknown { background: #f0f3f8; color: var(--sp-text-secondary); }
+    }
+  }
+
+  .df-desc {
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--sp-text-secondary);
+  }
+
+  .df-actions {
+    margin-top: 12px;
+  }
+}
+
+/* 动态围栏弹窗说明 */
+.df-pop-desc {
+  padding: 0 16px 6px;
+  font-size: 12px;
+  color: var(--sp-text-secondary);
+  text-align: center;
 }
 
 .fence-list {

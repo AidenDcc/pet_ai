@@ -429,7 +429,7 @@ loadAll()
           <div class="feature-item" @click="goFenceManage">
             <div class="feature-icon" style="--fi-bg: #e0f7f4">📍</div>
             <span class="feature-label">{{ t('user.health.fence') }}</span>
-            <span v-if="fences.length" class="feature-badge">{{ fences.length }}</span>
+            <span v-if="fences.filter((f) => f.type !== 'dynamic').length" class="feature-badge">{{ fences.filter((f) => f.type !== 'dynamic').length }}</span>
           </div>
           <div class="feature-item" @click="voiceVisible = true">
             <div class="feature-icon" style="--fi-bg: #e8f1fe">🎙️</div>

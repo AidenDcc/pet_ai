@@ -242,17 +242,19 @@ function drawAll() {
     })
   }
 
-  // 多电子围栏
+  // 多电子围栏（动态中心点围栏为蓝色，固定围栏为橙色）
   props.fences.forEach((f) => {
     if (!f.enabled && !props.showFence) return
+    const isDynamic = f.type === 'dynamic'
+    const color = isDynamic ? '#2f7cf6' : f.enabled ? '#ff6b00' : '#999'
     const circle = new AMap.Circle({
       center: [f.center.lng, f.center.lat],
       radius: f.radius,
-      strokeColor: f.enabled ? '#ff6b00' : '#999',
+      strokeColor: color,
       strokeWeight: f.enabled ? 2 : 1,
       strokeOpacity: f.enabled ? 0.9 : 0.5,
-      strokeStyle: f.enabled ? 'dashed' : 'dashed',
-      fillColor: f.enabled ? '#ff6b00' : '#999',
+      strokeStyle: 'dashed',
+      fillColor: color,
       fillOpacity: f.enabled ? 0.08 : 0.03,
       zIndex: 4,
     })
@@ -264,10 +266,10 @@ function drawAll() {
       position: [f.center.lng, f.center.lat],
       content:
         '<div style="' +
-        'background:rgba(255,107,0,0.9);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;' +
+        'background:' + (isDynamic ? 'rgba(47,124,246,0.9)' : 'rgba(255,107,0,0.9)') + ';color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;' +
         'white-space:nowrap;transform:translate(-50%,-120%);box-shadow:0 1px 4px rgba(0,0,0,0.2);' +
         (f.enabled ? '' : 'background:rgba(150,150,150,0.7);') +
-        '">' + f.name + '</div>',
+        '">' + (isDynamic ? '📱 ' : '') + f.name + '</div>',
       offset: new AMap.Pixel(0, 0),
       zIndex: 15,
     })
