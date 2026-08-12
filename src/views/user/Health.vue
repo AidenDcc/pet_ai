@@ -23,10 +23,10 @@ const METRICS: { key: string; labelKey: string; unitKey: string; color: string; 
 ]
 
 const EXERCISE_METRICS = [
-  { key: 'stepFreq', labelKey: 'user.health.stepFreq', unitKey: 'user.health.stepFreqUnit', icon: '👟' },
-  { key: 'stride', labelKey: 'user.health.stride', unitKey: 'user.health.strideUnit', icon: '📏' },
-  { key: 'gait', labelKey: 'user.health.gait', unitKey: '', icon: '🚶' },
-  { key: 'speed', labelKey: 'user.health.speed', unitKey: 'user.health.speedUnit', icon: '⚡' },
+  { key: 'stepFreq', labelKey: 'user.health.stepFreq', unitKey: 'user.health.stepFreqUnit', icon: '👟', color: '#ff9f43' },
+  { key: 'stride', labelKey: 'user.health.stride', unitKey: 'user.health.strideUnit', icon: '📏', color: '#5b8ff9' },
+  { key: 'gait', labelKey: 'user.health.gait', unitKey: '', icon: '🚶', color: '#00b4a6' },
+  { key: 'speed', labelKey: 'user.health.speed', unitKey: 'user.health.speedUnit', icon: '⚡', color: '#ff6b6b' },
 ]
 
 const pets = ref<PetJoined[]>([])
@@ -406,9 +406,11 @@ loadAll()
             class="exercise-item"
             @click="goExerciseTrend()"
           >
+          <!--
             <span class="exercise-icon">{{ em.icon }}</span>
+          -->
             <div class="exercise-info">
-              <div class="exercise-value">
+              <div class="exercise-value" :style="{ color: em.color }">
                 <template v-if="exercise">
                   <template v-if="em.key === 'gait'">{{ getGaitLabel(exercise.gait) }}</template>
                   <template v-else-if="em.key === 'stepFreq'">{{ exercise.stepFreq }}</template>
