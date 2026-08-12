@@ -449,12 +449,24 @@ export default {
       fenceManage: '电子围栏管理',
       fenceCount: '{n} 个围栏',
       manageFence: '管理围栏',
-      // 守护页快捷功能（围栏 / 语音 / 问诊 / 指令）
+      // 守护页快捷功能（围栏 / 语音 / 问诊 / 指令 / 轨迹）
       quickTools: '快捷功能',
       fence: '围栏',
       voice: '语音',
       consult: '问诊',
       command: '指令',
+      track: '轨迹',
+      // 历史轨迹（轨迹页）
+      trackTitle: '历史轨迹',
+      trackToday: '今天',
+      track3d: '近3天',
+      track7d: '近7天',
+      trackCustom: '自定义',
+      trackNow: '现在',
+      trackPointsLabel: '轨迹点',
+      trackDistanceLabel: '里程',
+      trackEmpty: '该时间段暂无轨迹',
+      trackPickerTitle: '选择时间区间',
       // 语音对讲（对讲机形式）
       voiceTitle: '语音对讲',
       voiceChannelIdle: '待机中',

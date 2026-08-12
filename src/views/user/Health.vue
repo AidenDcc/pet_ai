@@ -11,6 +11,7 @@ import { getExerciseSummaryApi, type ExerciseState } from '@/api/modules/exercis
 import Amap from '@/components/Amap.vue'
 import { SPECIES_ICON, DEVICE_STATUS } from '@/utils/consts'
 import { petAvatarSrc } from '@/utils/petAvatar'
+import { haversineMeters } from '@/utils/geo'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -40,6 +41,26 @@ const loading = ref(false)
 
 const activePet = computed(() => pets.value[activeIndex.value] ?? null)
 const activeDevice = computed(() => devices.value.find((d) => d.boundPetId === activePet.value?.id) ?? null)
+
+/** 已开启的围栏（含固定与动态） */
+const enabledFences = computed(() => fences.value.filter((f) => f.enabled))
+const deviceOnline = computed(() => activeDevice.value?.status === 'online')
+/** 当前位置：取轨迹最后一点 */
+const currentPos = computed(() => {
+  const pts = track.value?.points
+  return pts?.length ? pts[pts.length - 1] : null
+})
+/**
+ * 围栏内外状态（显示在当前物理地址前）：
+ * 存在已开启围栏时按当前位置与围栏中心距离判断；仅当「无有效围栏 且 设备离线」时不显示。
+ */
+const fenceState = computed<'inside' | 'outside' | null>(() => {
+  if (!enabledFences.value.length && !deviceOnline.value) return null
+  const pos = currentPos.value
+  if (!pos) return null
+  const inside = enabledFences.value.some((f) => haversineMeters(pos, f.center) <= f.radius)
+  return inside ? 'inside' : 'outside'
+})
 
 async function loadAll() {
   loading.value = true
@@ -108,6 +129,13 @@ function goFenceManage() {
   const pet = activePet.value
   if (!pet) return
   router.push(`/user/health/fence/${pet.id}`)
+}
+
+/** 快捷功能：轨迹 —— 查看宠物历史运动轨迹（默认一天，可选时间区间） */
+function goTrack() {
+  const pet = activePet.value
+  if (!pet) return
+  router.push(`/user/health/track/${pet.id}`)
 }
 
 /** 快捷功能：问诊 —— 直达选医生界面（可选择医生与宠物发起问诊） */
@@ -373,6 +401,9 @@ loadAll()
           </div>
           <div class="panel-pet-pos">
             <span class="pos-dot" />
+            <span v-if="fenceState" class="pos-fence" :class="`is-${fenceState}`">
+              {{ t(fenceState === 'inside' ? 'user.health.insideFence' : 'user.health.outsideFence') }}
+            </span>
             {{ track ? track.address : t('user.health.positionLoading') }}
           </div>
         </div>
@@ -444,6 +475,10 @@ loadAll()
           <div class="feature-item" @click="commandVisible = true">
             <div class="feature-icon" style="--fi-bg: #f0eaff">🎛️</div>
             <span class="feature-label">{{ t('user.health.command') }}</span>
+          </div>
+          <div class="feature-item" @click="goTrack">
+            <div class="feature-icon" style="--fi-bg: #fff6e5">🗺️</div>
+            <span class="feature-label">{{ t('user.health.track') }}</span>
           </div>
         </div>
       </div>
@@ -735,6 +770,26 @@ loadAll()
       border-radius: 50%;
       background: #4cd964;
       flex-shrink: 0;
+    }
+
+    /* 围栏内外标签（显示在地址前） */
+    .pos-fence {
+      flex-shrink: 0;
+      padding: 0 7px;
+      border-radius: 9px;
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 17px;
+
+      &.is-inside {
+        color: #0aa35b;
+        background: rgba(74, 217, 100, 0.16);
+      }
+
+      &.is-outside {
+        color: #ff6b00;
+        background: rgba(255, 107, 0, 0.14);
+      }
     }
   }
 }

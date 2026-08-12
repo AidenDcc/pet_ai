@@ -1,6 +1,6 @@
 import type { DeviceInfo, UploadRecord } from '@/types'
 import { defineMock, MockError, requireUser, mockAddress, rand } from '../helper'
-import { devices, pets, findDeviceById, findDeviceBySn, findPetById, tracks, telemetry, uploadLogs, pushUpload } from '../db'
+import { devices, pets, findDeviceById, findDeviceBySn, findPetById, tracks, trackHistory, telemetry, uploadLogs, pushUpload } from '../db'
 
 export interface DeviceJoined extends DeviceInfo {
   petName: string | null
@@ -172,6 +172,23 @@ defineMock([
       if (!petId || !tracks[petId]) throw new MockError('暂无轨迹数据', 404)
       const center = device.geofence?.center ?? tracks[petId][tracks[petId].length - 1]
       return { petId, points: tracks[petId], center, address: mockAddress(center.lat, center.lng) }
+    },
+  },
+  // 历史轨迹（按 from/to 时间区间筛选，支持多日查看）
+  {
+    method: 'get',
+    path: '/device/:id/track-history',
+    handler: ({ params, query }) => {
+      const device = findDeviceById(params.id)
+      if (!device) throw new MockError('设备不存在', 404)
+      const petId = device.boundPetId
+      if (!petId || !trackHistory[petId]) throw new MockError('暂无轨迹数据', 404)
+      const from = Number(query.from ?? 0)
+      const to = Number(query.to ?? 0)
+      const points = trackHistory[petId].filter((p) => p.ts >= from && p.ts <= to)
+      if (!points.length) throw new MockError('该时间段暂无轨迹', 404)
+      const center = device.geofence?.center ?? points[points.length - 1]
+      return { petId, points, center, address: mockAddress(center.lat, center.lng) }
     },
   },
   // 实时生命体征流

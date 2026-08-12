@@ -557,6 +557,63 @@ for (const pet of pets) {
 }
 
 /* ============================================================
+ * 历史轨迹（历史轨迹页：多日 + 时间区间筛选）
+ * ============================================================ */
+export const trackHistory: Record<string, GeoPoint[]> = {}
+
+function startOfDay(ms: number): number {
+  const d = new Date(ms)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
+/** 最近 7 天：过去 6 天每天 1~2 段散步（8:00~19:00 随机起始，每段 30~45 点、间隔 3 分钟） */
+function genHistoryTrack(center: { lat: number; lng: number }): GeoPoint[] {
+  const now = Date.now()
+  const DAY = 86400000
+  const pts: GeoPoint[] = []
+
+  for (let d = 6; d >= 1; d--) {
+    const dayStart = startOfDay(now - d * DAY)
+    let sessionStart = dayStart + (8 + rand(0, 11)) * 3600000 // 8:00~19:00 起始
+    const sessions = rand(1, 2)
+    for (let s = 0; s < sessions; s++) {
+      let lat = center.lat
+      let lng = center.lng
+      const count = 30 + rand(0, 15)
+      for (let i = 0; i < count; i++) {
+        const ts = sessionStart + i * 3 * 60000
+        if (ts > now) break
+        pts.push({ lat, lng, ts })
+        lat += randFloat(-0.0011, 0.0011, 6)
+        lng += randFloat(-0.0011, 0.0011, 6)
+      }
+      sessionStart += (3 + rand(1, 3)) * 3600000 // 下一段间隔 3~5 小时
+    }
+  }
+
+  // 今天：一段散步，结束于当前时间前约 2 分钟，保证「今天」与当前定位都有轨迹
+  {
+    let lat = center.lat
+    let lng = center.lng
+    const start = now - 119 * 60000
+    for (let i = 0; i < 40; i++) {
+      const ts = i === 39 ? now - 2 * 60000 : start + i * 3 * 60000
+      pts.push({ lat, lng, ts })
+      lat += randFloat(-0.0011, 0.0011, 6)
+      lng += randFloat(-0.0011, 0.0011, 6)
+    }
+  }
+
+  return pts.sort((a, b) => a.ts - b.ts)
+}
+
+for (const pet of pets) {
+  const device = devices.find((d) => d.boundPetId === pet.id)
+  trackHistory[pet.id] = genHistoryTrack(device?.geofence?.center ?? { lat: 31.2304, lng: 121.4737 })
+}
+
+/* ============================================================
  * 健康报告
  * ============================================================ */
 const abnormalPool: {

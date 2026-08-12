@@ -60,6 +60,14 @@ export function getDeviceTrackApi(id: string) {
   )
 }
 
+/** 历史轨迹：按 from/to 时间区间（毫秒时间戳）筛选 */
+export function getDeviceTrackHistoryApi(id: string, range?: { from: number; to: number }) {
+  return request.get<unknown, { petId: string; points: GeoPoint[]; center: { lat: number; lng: number }; address: string }>(
+    `/device/${id}/track-history`,
+    { params: range },
+  )
+}
+
 export function getDeviceTelemetryApi(id: string) {
   return request.get<unknown, { petId: string; points: HealthMetric[] }>(`/device/${id}/telemetry`)
 }

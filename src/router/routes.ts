@@ -126,6 +126,12 @@ export const userRoutes: RouteRecordRaw[] = [
         meta: { titleKey: 'user.health.fenceManage' },
       },
       {
+        path: 'health/track/:petId',
+        name: 'user-health-track',
+        component: () => import('@/views/user/TrackView.vue'),
+        meta: { titleKey: 'user.health.trackTitle' },
+      },
+      {
         path: 'community',
         name: 'user-community',
         component: () => import('@/views/user/Community.vue'),

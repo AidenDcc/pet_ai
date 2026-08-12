@@ -449,12 +449,24 @@ export default {
       fenceManage: 'Geofence Management',
       fenceCount: '{n} fences',
       manageFence: 'Manage fences',
-      // Quick tools on the guard page (Fence / Voice / Consult / Commands)
+      // Quick tools on the guard page (Fence / Voice / Consult / Commands / Track)
       quickTools: 'Quick tools',
       fence: 'Fence',
       voice: 'Voice',
       consult: 'Consult',
       command: 'Commands',
+      track: 'Track',
+      // Track history page
+      trackTitle: 'Track History',
+      trackToday: 'Today',
+      track3d: '3 Days',
+      track7d: '7 Days',
+      trackCustom: 'Custom',
+      trackNow: 'Now',
+      trackPointsLabel: 'Points',
+      trackDistanceLabel: 'Distance',
+      trackEmpty: 'No track in this time range',
+      trackPickerTitle: 'Select time range',
       // Walkie-talkie
       voiceTitle: 'Walkie-Talkie',
       voiceChannelIdle: 'Standby',
