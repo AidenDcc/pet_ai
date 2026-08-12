@@ -108,10 +108,16 @@ export const userRoutes: RouteRecordRaw[] = [
         meta: { titleKey: 'nav.guard', tabbar: true, hideNavbar: true },
       },
       {
-        path: 'health/trend/:petId/:metricType',
-        name: 'user-health-trend',
-        component: () => import('@/views/user/MetricTrend.vue'),
-        meta: { titleKey: 'user.health.trendTitle' },
+        path: 'health/vitals/:petId/:metricType',
+        name: 'user-health-vitals',
+        component: () => import('@/views/user/VitalDetail.vue'),
+        meta: { titleKey: 'user.health.vitalsTitle' },
+      },
+      {
+        path: 'health/exercise',
+        name: 'user-health-exercise',
+        component: () => import('@/views/user/FeaturePlaceholder.vue'),
+        meta: { titleKey: 'user.health.exerciseTrend', icon: 'chart-trending-o' },
       },
       {
         path: 'health/fence/:petId',

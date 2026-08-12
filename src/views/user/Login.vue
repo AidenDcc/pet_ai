@@ -74,7 +74,7 @@ function onSocial() {
           <van-field
             v-model="account"
             class="field"
-            label-position="top"
+            label-align="top"
             :label="t('login.account')"
             :placeholder="t('login.accountPlaceholder')"
             clearable
@@ -83,7 +83,7 @@ function onSocial() {
           <van-field
             v-model="password"
             class="field"
-            label-position="top"
+            label-align="top"
             :label="t('login.password')"
             :type="pwdType"
             :placeholder="t('login.passwordPlaceholder')"
@@ -107,7 +107,7 @@ function onSocial() {
             v-if="contactType === 'phone'"
             v-model="phone"
             class="field"
-            label-position="top"
+            label-align="top"
             :label="t('login.contactPhone')"
             :placeholder="t('register.phonePlaceholder')"
             clearable
@@ -125,7 +125,7 @@ function onSocial() {
             v-else
             v-model="email"
             class="field"
-            label-position="top"
+            label-align="top"
             :label="t('login.contactEmail')"
             :placeholder="t('register.emailPlaceholder')"
             clearable
@@ -133,7 +133,7 @@ function onSocial() {
           <van-field
             v-model="code"
             class="field"
-            label-position="top"
+            label-align="top"
             :label="t('login.codePlaceholder')"
             :placeholder="t('login.codePlaceholder')"
             maxlength="6"

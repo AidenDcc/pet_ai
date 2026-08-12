@@ -92,10 +92,16 @@ function onPetSelect(index: number) {
   loadPetData()
 }
 
-function goTrend(metricType: string) {
+function goVitals(metricType: string) {
   const pet = activePet.value
   if (!pet) return
-  router.push(`/user/health/trend/${pet.id}/${metricType}`)
+  router.push(`/user/health/vitals/${pet.id}/${metricType}`)
+}
+
+function goExerciseTrend() {
+  const pet = activePet.value
+  if (!pet) return
+  router.push('/user/health/exercise')
 }
 
 function goFenceManage() {
@@ -199,7 +205,7 @@ loadAll()
             :key="m.key"
             class="metric-item"
             :style="{ '--metric-color': m.color }"
-            @click="goTrend(m.key)"
+            @click="goVitals(m.key)"
           >
             <div class="metric-item-value" :style="{ color: m.color }">
               {{ summary ? m.getValue(summary) : '--' }}
@@ -216,7 +222,7 @@ loadAll()
             v-for="em in EXERCISE_METRICS"
             :key="em.key"
             class="exercise-item"
-            @click="goTrend('exercise')"
+            @click="goExerciseTrend()"
           >
             <span class="exercise-icon">{{ em.icon }}</span>
             <div class="exercise-info">

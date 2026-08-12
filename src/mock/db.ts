@@ -425,14 +425,24 @@ export const vets: VetInfo[] = [
 export const health: Record<string, HealthMetric[]> = {}
 /** 更细粒度的实时流（每 5 分钟一条，最近 2 小时） */
 export const telemetry: Record<string, HealthMetric[]> = {}
-/** 近 7 天日汇总 */
-export const dailyAgg: Record<string, { ts: number; steps: number; sleepHours: number; avgHeartRate: number }[]> = {}
+/** 日汇总（近 90 天，含四体征日均/极值，供体征详情页按 周/月/季度 周期展示） */
+export interface DailyAgg {
+  ts: number
+  heartRate: { avg: number; max: number; min: number }
+  respiratoryRate: { avg: number; max: number; min: number }
+  spo2: { avg: number; max: number; min: number }
+  temperature: { avg: number; max: number; min: number }
+  steps: number
+  sleepHours: number
+  avgHeartRate: number
+}
+export const dailyAgg: Record<string, DailyAgg[]> = {}
 
 function genHealth(pet: PetInfo): HealthMetric[] {
   const isCat = pet.species === 'cat'
   const hrBase = isCat ? 150 : 95
   const rrBase = isCat ? 28 : 22
-  const tempBase = isCat ? 38.6 : 38.3
+  const tempBase = isCat ? 38.6 : 38.4
   const now = Date.now()
   const pts: HealthMetric[] = []
   for (let i = 24; i >= 0; i--) {
@@ -442,13 +452,15 @@ function genHealth(pet: PetInfo): HealthMetric[] {
     const nap = !sleeping && Math.random() < 0.18
     const rest = sleeping || nap
     const hr = rest ? hrBase + rand(-12, 0) : hrBase + rand(-6, 22)
-    const rr = rest ? rrBase - rand(4, 8) : rrBase + rand(-3, 6)
+    // 呼吸频率跨度略大：多数落在物种绿色区间，偶有触碰橙色预警区间，便于体征页展示三色
+    const rr = rest ? rrBase - rand(3, 7) : rrBase + rand(-4, 9)
     pts.push({
       ts,
       heartRate: hr,
       respiratoryRate: rr,
       spo2: randFloat(95, 100),
-      temperature: Number((tempBase + (Math.random() * 0.6 - 0.3)).toFixed(1)),
+      // 体温跨度稍大：多数落在绿色正常区间，偶有触碰橙色预警区间，便于体征页展示三色
+      temperature: Number((tempBase + (Math.random() * 0.8 - 0.3)).toFixed(1)),
       activity: rest ? rand(0, 15) : rand(90, 620),
       sleepStage: sleeping ? (Math.random() > 0.55 ? 'deep' : 'light') : 'awake',
     })
@@ -470,7 +482,7 @@ function genTelemetry(pet: PetInfo): HealthMetric[] {
       heartRate: resting ? hrBase + rand(-10, 2) : hrBase + rand(-4, 18),
       respiratoryRate: isCat ? rand(22, 32) : rand(16, 30),
       spo2: randFloat(95, 100),
-      temperature: Number(((isCat ? 38.6 : 38.3) + (Math.random() * 0.4 - 0.2)).toFixed(1)),
+      temperature: Number(((isCat ? 38.6 : 38.4) + (Math.random() * 0.4 - 0.2)).toFixed(1)),
       activity: resting ? rand(0, 10) : rand(120, 560),
       sleepStage: resting ? 'light' : 'awake',
     })
@@ -478,15 +490,34 @@ function genTelemetry(pet: PetInfo): HealthMetric[] {
   return pts
 }
 
-function genDaily(pet: PetInfo) {
+function genDaily(pet: PetInfo): DailyAgg[] {
   const isCat = pet.species === 'cat'
   const hrBase = isCat ? 150 : 95
-  const arr: { ts: number; steps: number; sleepHours: number; avgHeartRate: number }[] = []
+  const rrBase = isCat ? 28 : 22
+  const tempBase = isCat ? 38.6 : 38.4
+  const arr: DailyAgg[] = []
   const now = Date.now()
-  for (let i = 6; i >= 0; i--) {
+  for (let i = 89; i >= 0; i--) {
     const ts = now - i * 86400000
     arr.push({
       ts,
+      heartRate: {
+        avg: hrBase + rand(-6, 8),
+        max: hrBase + rand(10, 26),
+        min: Math.max(40, hrBase + rand(-20, -8)),
+      },
+      respiratoryRate: {
+        avg: rrBase + rand(-3, 3),
+        // max 略高，让周/月/季视图的呼吸频率也能偶见橙色预警点
+        max: rrBase + rand(3, 11),
+        min: rrBase + rand(-6, -2),
+      },
+      spo2: { avg: randFloat(96, 99, 1), max: randFloat(99, 100, 1), min: randFloat(93, 96, 1) },
+      temperature: {
+        avg: Number((tempBase + rand(-0.2, 0.4)).toFixed(1)),
+        max: Number((tempBase + rand(0.3, 0.7)).toFixed(1)),
+        min: Number((tempBase + rand(-0.4, -0.1)).toFixed(1)),
+      },
       steps: rand(4200, 12800),
       sleepHours: Number((pet.species === 'cat' ? randFloat(12, 16, 1) : randFloat(9, 13, 1))),
       avgHeartRate: hrBase + rand(-6, 8),

@@ -25,9 +25,15 @@ defineMock([
       const steps = data.reduce((s, m) => s + m.activity, 0)
       const sleepHours = data.filter((m) => m.sleepStage !== 'awake').length * 1.0
       const goal = 8000
+      // 静息心率：取非清醒（睡眠/休息）样本的均值心率
+      const restingPts = data.filter((m) => m.sleepStage !== 'awake').map((m) => m.heartRate)
+      const restingHeartRate = restingPts.length
+        ? Math.round(restingPts.reduce((s, n) => s + n, 0) / restingPts.length)
+        : Math.min(...hr)
       return {
         petId,
         updatedAt: latest.ts,
+        restingHeartRate,
         heartRate: { avg: avg(hr), max: Math.max(...hr), min: Math.min(...hr), latest: latest.heartRate },
         respiratoryRate: { latest: latest.respiratoryRate, avg: avg(data.map((m) => m.respiratoryRate)) },
         spo2: { latest: latest.spo2, avg: avg(data.map((m) => m.spo2)) },
@@ -60,16 +66,23 @@ defineMock([
         activity: '步',
         sleep: '深度等级',
       }
-      if (days === 7 && ['heartRate', 'activity', 'sleep'].includes(type)) {
+      if (days > 1) {
         const agg = dailyAgg[petId] ?? []
-        const keyMap: Record<string, 'avgHeartRate' | 'steps' | 'sleepHours'> = {
-          heartRate: 'avgHeartRate',
-          activity: 'steps',
-          sleep: 'sleepHours',
+        // activity / sleep：保留原有日汇总字段；四体征：返回日均值点位
+        if (type === 'activity' || type === 'sleep') {
+          const keyMap: Record<'activity' | 'sleep', 'avgHeartRate' | 'steps' | 'sleepHours'> = {
+            activity: 'steps',
+            sleep: 'sleepHours',
+          }
+          const key = keyMap[type]
+          return {
+            points: agg.map((d) => ({ ts: d.ts, value: d[key] })),
+            unit: unitMap[type],
+            range: RANGES[type] ?? null,
+          }
         }
-        const key = keyMap[type]
         return {
-          points: agg.map((d) => ({ ts: d.ts, value: d[key] })),
+          points: agg.map((d) => ({ ts: d.ts, value: d[type].avg })),
           unit: unitMap[type],
           range: RANGES[type] ?? null,
         }

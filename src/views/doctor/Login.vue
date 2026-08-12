@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useLoginForm } from '@/composables/useLoginForm'
+import PhoneShell from '@/components/PhoneShell.vue'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -17,6 +18,7 @@ const { account, password, showPwd, pwdType, loading, demoAccounts, submitPwd, f
 </script>
 
 <template>
+  <PhoneShell>
   <div class="doctor-login">
     <div class="card">
       <!-- 品牌区 -->
@@ -85,19 +87,22 @@ const { account, password, showPwd, pwdType, loading, demoAccounts, submitPwd, f
       </template>
     </div>
   </div>
+  </PhoneShell>
 </template>
 
 <style scoped lang="scss">
 .doctor-login {
-  min-height: 100vh;
+  flex: 1;
+  min-height: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  overflow-y: auto;
   padding: 24px 16px;
   background: var(--sp-bg);
 }
 
 .card {
+  margin: auto;
   width: 100%;
   max-width: 400px;
   padding: 32px 28px;

@@ -88,6 +88,7 @@ declare module 'vue' {
     VanTag: typeof import('vant/es')['Tag']
     VanUploader: typeof import('vant/es')['Uploader']
     VitalChart: typeof import('./components/VitalChart.vue')['default']
+    VitalDetailChart: typeof import('./components/VitalDetailChart.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

@@ -4,6 +4,8 @@ import type { HealthMetric, HealthMetricType, NormalRange } from '@/types'
 export interface HealthSummary {
   petId: string
   updatedAt: number
+  /** 静息心率（非清醒时段均值心率，体征详情页心率 Tab 展示） */
+  restingHeartRate: number
   heartRate: { avg: number; max: number; min: number; latest: number }
   respiratoryRate: { latest: number; avg: number }
   spo2: { latest: number; avg: number }
