@@ -54,6 +54,75 @@ body.theme-orange {
   --van-primary-color: #ff6b00;
 }
 
+/* ---------- 平台运营端（Admin 桌面）薄荷绿主题 ----------
+ * 参照 ShuxinPet 后台 UI 风格提示词：浅米白侧边栏 #F9FCF7、薄荷绿 #72D1A8、
+ * 深墨绿健康卡片 #0F4736、浅绿表头 #E6F7EF、8px 圆角卡片、极简商务数据表。
+ * class 加在 body 上，Element 弹层/分页/表格都能继承薄荷绿。
+ */
+body.theme-admin {
+  /* 品牌令牌 */
+  --sp-primary: #72d1a8;
+  --sp-primary-light: #8fdcbb;
+  --sp-primary-dark: #4c9a7c;
+  --sp-bg: #f9fcf7;
+  --sp-card: #ffffff;
+  --sp-text: #222222;
+  --sp-text-secondary: #777777;
+  --sp-text-placeholder: #a8b3ab;
+  --sp-border: #e5e8eb;
+  --sp-radius: 8px;
+  --sp-shadow: 0 1px 6px rgba(15, 71, 54, 0.06);
+
+  /* Element Plus 主色覆盖（薄荷绿系） */
+  --el-color-primary: #72d1a8;
+  --el-color-primary-light-3: #94dcbc;
+  --el-color-primary-light-5: #b3e8cc;
+  --el-color-primary-light-7: #d2f2e2;
+  --el-color-primary-light-8: #e6f7ef;
+  --el-color-primary-light-9: #f2fbf6;
+  --el-color-primary-dark-2: #4c9a7c;
+
+  /* ---------- 数据表：浅薄荷表头 / 细边框 / hover 浅灰 / 无隔行变色 ---------- */
+  .el-table {
+    --el-table-header-bg-color: #e6f7ef;
+    --el-table-header-text-color: #222222;
+    --el-table-border-color: #e5e8eb;
+    --el-table-row-hover-bg-color: #f2f4f2;
+    --el-table-text-color: #222222;
+    border: 1px solid #e5e8eb;
+    border-radius: 8px;
+    overflow: hidden;
+    .el-table__cell {
+      padding: 12px 0;
+    }
+  }
+  .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+    background: #ffffff;
+  }
+
+  /* 分页：极简扁平，去掉胶囊背景 */
+  .el-pagination.is-background .el-pager li {
+    background: transparent;
+    border-radius: 6px;
+    &.is-active {
+      background: #72d1a8;
+      color: #fff;
+    }
+  }
+
+  /* Element 卡片统一 8px 圆角 */
+  .el-card {
+    border-radius: 8px;
+    --el-card-border-color: #e5e8eb;
+  }
+
+  /* 输入/选择框圆角 */
+  .el-input__wrapper,
+  .el-select__wrapper {
+    border-radius: 6px;
+  }
+}
+
 /* ---------- Reset ---------- */
 * {
   margin: 0;

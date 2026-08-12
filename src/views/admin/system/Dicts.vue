@@ -271,7 +271,7 @@ onMounted(loadTypes)
             >
               <el-table-column prop="name" :label="t('admin.dicts.typeName')" min-width="90" />
               <el-table-column prop="itemCount" :label="t('admin.dicts.itemCount')" width="60" align="center" />
-              <el-table-column :label="t('common.action')" width="96">
+              <el-table-column :label="t('common.action')" width="120">
                 <template #default="{ row }">
                   <el-button size="small" type="primary" link @click="openEditType(row as DictTypeRow)">{{ t('common.edit') }}</el-button>
                   <el-button size="small" type="danger" link @click="removeType(row as DictTypeRow)">{{ t('common.delete') }}</el-button>
@@ -428,7 +428,7 @@ onMounted(loadTypes)
   min-height: 420px;
 }
 .left-pane {
-  border-right: 1px solid var(--sp-border, #ebeef5);
+  border-right: 1px solid var(--sp-border, #e5e8eb);
   padding-right: 12px;
   display: flex;
   flex-direction: column;

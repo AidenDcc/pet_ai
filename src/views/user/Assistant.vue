@@ -6,6 +6,7 @@ import { showToast } from 'vant'
 import { getMyPetsApi, type PetJoined } from '@/api/modules/pet'
 import { chatAssistantApi } from '@/api/modules/assistant'
 import { commandDeviceApi } from '@/api/modules/device'
+import { COMMAND_FEEDBACK } from '@/utils/consts'
 import type { AssistantReply } from '@/types'
 
 const router = useRouter()
@@ -49,8 +50,8 @@ async function runAction(reply: AssistantReply) {
   if (!reply.action) return
   if (reply.action.type === 'command' && reply.action.command && reply.action.deviceId) {
     try {
-      const res = await commandDeviceApi({ deviceId: reply.action.deviceId, command: reply.action.command })
-      showToast(res.message)
+      await commandDeviceApi({ deviceId: reply.action.deviceId, command: reply.action.command })
+      showToast(t(COMMAND_FEEDBACK[reply.action.command] ?? 'user.devices.cmdSent'))
     } catch (e) {
       showToast((e as Error).message || t('user.devices.cmdFailed'))
     }

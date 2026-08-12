@@ -222,7 +222,7 @@ onMounted(load)
   align-items: center;
   gap: 10px;
   font-size: 12px;
-  color: var(--sp-text-2, #8a94a6);
+  color: var(--sp-text-2, #777777);
   margin-bottom: 12px;
 }
 </style>

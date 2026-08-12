@@ -9,7 +9,7 @@ import { getHealthSummaryApi, type HealthSummary } from '@/api/modules/health'
 import { getFencesApi, type PetFence } from '@/api/modules/fence'
 import { getExerciseSummaryApi, type ExerciseState } from '@/api/modules/exercise'
 import Amap from '@/components/Amap.vue'
-import { SPECIES_ICON, DEVICE_STATUS } from '@/utils/consts'
+import { SPECIES_ICON, DEVICE_STATUS, COMMAND_FEEDBACK } from '@/utils/consts'
 import { petAvatarSrc } from '@/utils/petAvatar'
 import { haversineMeters } from '@/utils/geo'
 
@@ -309,8 +309,8 @@ async function sendCommand(cmd: { value: string }) {
   if (cmdSending.value) return
   cmdSending.value = cmd.value
   try {
-    const res = await commandDeviceApi({ deviceId: activeDevice.value.id, command: cmd.value })
-    showToast(res.message)
+    await commandDeviceApi({ deviceId: activeDevice.value.id, command: cmd.value })
+    showToast(t(COMMAND_FEEDBACK[cmd.value] ?? 'user.devices.cmdSent'))
     // 请求定位后刷新轨迹
     if (cmd.value === 'refresh') loadPetData()
   } catch (e) {

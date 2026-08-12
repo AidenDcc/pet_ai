@@ -58,6 +58,13 @@ export const DEVICE_STATUS: Record<string, LabeledTag> = {
   unbound: { labelKey: 'status.unbound', tag: 'danger' },
 }
 
+/** 远程指令下发的成功反馈（i18n key，按指令值映射） */
+export const COMMAND_FEEDBACK: Record<string, string> = {
+  find: 'user.devices.cmdFindSent',
+  light: 'user.devices.cmdLightSent',
+  refresh: 'user.devices.cmdRefreshSent',
+}
+
 export const ORDER_STATUS: Record<string, LabeledTag> = {
   pending: { labelKey: 'status.pending', tag: 'warning' },
   paid: { labelKey: 'status.paid', tag: 'success' },

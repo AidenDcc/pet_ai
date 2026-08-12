@@ -25,13 +25,13 @@ const deviceChart = useEchart(deviceRef)
 const abnormalChart = useEchart(abnormalRef)
 const growthChart = useEchart(growthRef)
 
-const BRAND = '#00b4a6'
-const PALETTE = ['#00b4a6', '#5b8ff9', '#ff9f43', '#ff6b6b', '#7d6bff', '#2bcbba']
+const BRAND = '#72d1a8'
+const PALETTE = ['#72d1a8', '#5b8ff9', '#ff9f43', '#ff6b6b', '#7d6bff', '#2bcbba']
 
 function baseTooltip() {
-  return { trigger: 'axis' as const, backgroundColor: 'rgba(255,255,255,0.96)', borderColor: '#e4e9f0', textStyle: { color: '#1f2d3d' } }
+  return { trigger: 'axis' as const, backgroundColor: 'rgba(255,255,255,0.96)', borderColor: '#e5e8eb', textStyle: { color: '#222222' } }
 }
-const axisStyle = { color: '#a3b0c0', fontSize: 11 }
+const axisStyle = { color: '#a8b3ab', fontSize: 11 }
 
 function render() {
   const d = data.value
@@ -39,12 +39,12 @@ function render() {
 
   trendChart.setOption({
     tooltip: baseTooltip(),
-    legend: { data: [t('admin.bi.revenue'), t('admin.bi.orders')], top: 0, textStyle: { color: '#5e6d82' } },
+    legend: { data: [t('admin.bi.revenue'), t('admin.bi.orders')], top: 0, textStyle: { color: '#777777' } },
     grid: { left: 56, right: 52, top: 30, bottom: 24 },
-    xAxis: { type: 'category', data: d.revenueTrend.map((r) => r.day), axisLabel: axisStyle, axisLine: { lineStyle: { color: '#e4e9f0' } } },
+    xAxis: { type: 'category', data: d.revenueTrend.map((r) => r.day), axisLabel: axisStyle, axisLine: { lineStyle: { color: '#e5e8eb' } } },
     yAxis: [
-      { type: 'value', name: t('admin.bi.yuan'), nameTextStyle: { color: '#a3b0c0' }, axisLabel: axisStyle, splitLine: { lineStyle: { color: '#f0f3f8' } } },
-      { type: 'value', name: t('admin.bi.units'), nameTextStyle: { color: '#a3b0c0' }, axisLabel: axisStyle, splitLine: { show: false } },
+      { type: 'value', name: t('admin.bi.yuan'), nameTextStyle: { color: '#a8b3ab' }, axisLabel: axisStyle, splitLine: { lineStyle: { color: '#eef2ee' } } },
+      { type: 'value', name: t('admin.bi.units'), nameTextStyle: { color: '#a8b3ab' }, axisLabel: axisStyle, splitLine: { show: false } },
     ],
     series: [
       {
@@ -58,7 +58,7 @@ function render() {
         lineStyle: { color: BRAND, width: 3 },
         itemStyle: { color: BRAND },
         areaStyle: {
-          color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(0,180,166,0.28)' }, { offset: 1, color: 'rgba(0,180,166,0.02)' }] },
+          color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(114,209,168,0.28)' }, { offset: 1, color: 'rgba(114,209,168,0.02)' }] },
         },
       },
       {
@@ -73,8 +73,8 @@ function render() {
   } as ECOption)
 
   planChart.setOption({
-    tooltip: { trigger: 'item', backgroundColor: 'rgba(255,255,255,0.96)', borderColor: '#e4e9f0', textStyle: { color: '#1f2d3d' } },
-    legend: { bottom: 0, textStyle: { color: '#5e6d82', fontSize: 11 } },
+    tooltip: { trigger: 'item', backgroundColor: 'rgba(255,255,255,0.96)', borderColor: '#e5e8eb', textStyle: { color: '#222222' } },
+    legend: { bottom: 0, textStyle: { color: '#777777', fontSize: 11 } },
     color: PALETTE,
     series: [
       {
@@ -100,12 +100,12 @@ function render() {
         startAngle: 210,
         endAngle: -30,
         progress: { show: true, width: 16, roundCap: true, itemStyle: { color: BRAND } },
-        axisLine: { lineStyle: { width: 16, color: [[1, '#eef1f5']] } },
+        axisLine: { lineStyle: { width: 16, color: [[1, '#eef2ee']] } },
         pointer: { itemStyle: { color: BRAND }, length: '60%' },
         axisTick: { show: false },
         splitLine: { length: 8, lineStyle: { color: '#fff', width: 2 } },
         axisLabel: { show: false },
-        detail: { valueAnimation: true, formatter: '{value}%', fontSize: 26, color: '#1f2d3d', offsetCenter: [0, '72%'] },
+        detail: { valueAnimation: true, formatter: '{value}%', fontSize: 26, color: '#222222', offsetCenter: [0, '72%'] },
         data: [{ value: onlineRate, name: t('admin.bi.deviceStatus') }],
       },
     ],
@@ -114,24 +114,24 @@ function render() {
   abnormalChart.setOption({
     tooltip: baseTooltip(),
     grid: { left: 90, right: 16, top: 16, bottom: 24 },
-    xAxis: { type: 'value', axisLabel: axisStyle, splitLine: { lineStyle: { color: '#f0f3f8' } } },
-    yAxis: { type: 'category', data: d.abnormalDist.map((a) => a.name), axisLabel: axisStyle, axisLine: { lineStyle: { color: '#e4e9f0' } } },
+    xAxis: { type: 'value', axisLabel: axisStyle, splitLine: { lineStyle: { color: '#eef2ee' } } },
+    yAxis: { type: 'category', data: d.abnormalDist.map((a) => a.name), axisLabel: axisStyle, axisLine: { lineStyle: { color: '#e5e8eb' } } },
     series: [
       {
         type: 'bar',
         data: d.abnormalDist.map((a) => a.value),
         barWidth: 12,
-        itemStyle: { borderRadius: [0, 6, 6, 0], color: { type: 'linear', x: 0, y: 0, x2: 1, y2: 0, colorStops: [{ offset: 0, color: '#33c6ba' }, { offset: 1, color: BRAND }] } },
+        itemStyle: { borderRadius: [0, 6, 6, 0], color: { type: 'linear', x: 0, y: 0, x2: 1, y2: 0, colorStops: [{ offset: 0, color: '#8fdcbb' }, { offset: 1, color: BRAND }] } },
       },
     ],
   })
 
   growthChart.setOption({
     tooltip: baseTooltip(),
-    legend: { data: [t('admin.bi.users'), t('admin.bi.vets')], bottom: 0, textStyle: { color: '#5e6d82' } },
+    legend: { data: [t('admin.bi.users'), t('admin.bi.vets')], bottom: 0, textStyle: { color: '#777777' } },
     grid: { left: 44, right: 16, top: 16, bottom: 44 },
-    xAxis: { type: 'category', data: d.growthTrend.map((g) => g.day), axisLabel: axisStyle, axisLine: { lineStyle: { color: '#e4e9f0' } } },
-    yAxis: { type: 'value', axisLabel: axisStyle, splitLine: { lineStyle: { color: '#f0f3f8' } } },
+    xAxis: { type: 'category', data: d.growthTrend.map((g) => g.day), axisLabel: axisStyle, axisLine: { lineStyle: { color: '#e5e8eb' } } },
+    yAxis: { type: 'value', axisLabel: axisStyle, splitLine: { lineStyle: { color: '#eef2ee' } } },
     color: [BRAND, '#5b8ff9'],
     series: [
       { name: t('admin.bi.users'), type: 'line', data: d.growthTrend.map((g) => g.users), smooth: true, symbol: 'none' },

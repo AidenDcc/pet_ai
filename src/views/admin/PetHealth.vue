@@ -23,7 +23,7 @@ const { t } = useI18n()
 const METRICS: { key: HealthMetricType; labelKey: string; unitKey: string; color: string }[] = [
   { key: 'temperature', labelKey: 'user.health.temperature', unitKey: 'user.health.degreeC', color: '#ff9f43' },
   { key: 'heartRate', labelKey: 'user.health.heartRate', unitKey: 'user.health.bpm', color: '#ff6b6b' },
-  { key: 'spo2', labelKey: 'user.health.spo2', unitKey: 'user.health.percent', color: '#00b4a6' },
+  { key: 'spo2', labelKey: 'user.health.spo2', unitKey: 'user.health.percent', color: '#72d1a8' },
   { key: 'respiratoryRate', labelKey: 'user.health.respiratory', unitKey: 'user.health.bpm', color: '#5b8ff9' },
 ]
 
@@ -358,7 +358,7 @@ loadPets()
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  background: #f7f9fc;
+  background: #f2fbf6;
   border-radius: 10px;
   margin-bottom: 8px;
 
@@ -403,7 +403,7 @@ loadPets()
     position: relative;
     text-align: center;
     padding: 16px 8px;
-    background: #f7f9fc;
+    background: #f2fbf6;
     border-radius: 12px;
 
     &.is-abnormal {
@@ -439,7 +439,7 @@ loadPets()
   .exercise-card {
     text-align: center;
     padding: 14px 8px;
-    background: #f7f9fc;
+    background: #f2fbf6;
     border-radius: 12px;
 
     .exercise-icon {
@@ -471,7 +471,7 @@ loadPets()
     padding: 6px 14px;
     border-radius: 16px;
     font-size: 13px;
-    background: #f0f3f8;
+    background: #e6f7ef;
     color: var(--sp-text-secondary);
     cursor: pointer;
     transition: all 0.2s;

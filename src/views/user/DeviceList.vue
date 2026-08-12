@@ -9,7 +9,7 @@ import {
   unbindDeviceApi,
   type DeviceJoined,
 } from '@/api/modules/device'
-import { DEVICE_STATUS, toVantTagType } from '@/utils/consts'
+import { DEVICE_STATUS, toVantTagType, COMMAND_FEEDBACK } from '@/utils/consts'
 import { relativeTime } from '@/utils/format'
 
 const { t } = useI18n()
@@ -61,8 +61,8 @@ async function sendCommand(action: { value: string }) {
   if (!actionDevice.value) return
   actionVisible.value = false
   try {
-    const res = await commandDeviceApi({ deviceId: actionDevice.value.id, command: action.value })
-    showToast(res.message)
+    await commandDeviceApi({ deviceId: actionDevice.value.id, command: action.value })
+    showToast(t(COMMAND_FEEDBACK[action.value] ?? 'user.devices.cmdSent'))
   } catch (e) {
     showToast((e as Error).message || t('user.devices.cmdFailed'))
   }

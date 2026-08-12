@@ -10,7 +10,7 @@ import {
   type DeviceJoined,
 } from '@/api/modules/device'
 import { getPetApi, type PetJoined } from '@/api/modules/pet'
-import { DEVICE_STATUS, toVantTagType, SPECIES_ICON, GENDER_LABEL } from '@/utils/consts'
+import { DEVICE_STATUS, toVantTagType, SPECIES_ICON, GENDER_LABEL, COMMAND_FEEDBACK } from '@/utils/consts'
 import { relativeTime, formatDate } from '@/utils/format'
 import { petAvatarSrc } from '@/utils/petAvatar'
 
@@ -77,8 +77,8 @@ async function sendCommand(action: { value: string }) {
   }
   actionVisible.value = false
   try {
-    const res = await commandDeviceApi({ deviceId: device.value.id, command: action.value })
-    showToast(res.message)
+    await commandDeviceApi({ deviceId: device.value.id, command: action.value })
+    showToast(t(COMMAND_FEEDBACK[action.value] ?? 'user.devices.cmdSent'))
     await load()
   } catch (e) {
     showToast((e as Error).message || t('user.devices.cmdFailed'))

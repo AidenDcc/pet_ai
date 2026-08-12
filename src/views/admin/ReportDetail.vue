@@ -56,7 +56,7 @@ load()
           <div
             class="score-ring"
             :style="{
-              background: `conic-gradient(${report.score < 85 ? '#ff9500' : '#34c759'} ${report.score * 3.6}deg, #eef1f5 0deg)`,
+              background: `conic-gradient(${report.score < 85 ? '#ff9f43' : '#72d1a8'} ${report.score * 3.6}deg, #eef2ee 0deg)`,
             }"
           >
             <div class="ring-inner">
@@ -262,14 +262,14 @@ load()
   gap: 12px;
 
   .metric-item {
-    background: #f7f9fc;
+    background: #f2fbf6;
     border-radius: 10px;
     padding: 12px;
 
     .metric-value {
       font-size: 20px;
       font-weight: 800;
-      color: var(--sp-primary-dark, #00b4a6);
+      color: var(--sp-primary-dark, #4c9a7c);
     }
     .metric-label {
       margin-top: 2px;
@@ -300,7 +300,7 @@ load()
   font-size: 13px;
   line-height: 1.7;
   color: var(--sp-text-secondary);
-  background: #f7f9fc;
+  background: #f2fbf6;
   border-radius: 10px;
   padding: 12px;
 }

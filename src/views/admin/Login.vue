@@ -89,7 +89,7 @@ const { account, password, remember, loading, demoAccounts, submitPwd, fillDemo 
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: #f0f2f5;
+  background: #f9fcf7;
 }
 
 .card {
@@ -110,7 +110,7 @@ const { account, password, remember, loading, demoAccounts, submitPwd, fillDemo 
     align-items: center;
     justify-content: center;
     font-size: 32px;
-    background: rgba(0, 180, 166, 0.1);
+    background: rgba(114, 209, 168, 0.14);
     border-radius: 16px;
   }
   .brand-name {
@@ -123,7 +123,7 @@ const { account, password, remember, loading, demoAccounts, submitPwd, fillDemo 
     margin-top: 14px;
     font-size: 24px;
     font-weight: 700;
-    color: #1f2d3d;
+    color: #222222;
   }
   .subtitle {
     margin-top: 6px;
@@ -194,7 +194,7 @@ const { account, password, remember, loading, demoAccounts, submitPwd, fillDemo 
   transition: all 0.2s;
   &:hover {
     border-color: var(--sp-primary);
-    background: rgba(0, 180, 166, 0.06);
+    background: rgba(114, 209, 168, 0.08);
   }
   .demo-emoji {
     font-size: 22px;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -15,38 +15,54 @@ const { t } = useI18n()
 const i18nStore = useI18nStore()
 
 interface AdminMenuLeaf { path: string; titleKey: string; icon: string }
-interface AdminMenuGroup { titleKey: string; icon: string; children: AdminMenuLeaf[] }
-type AdminMenuNode = AdminMenuLeaf | AdminMenuGroup
+interface AdminMenuGroupNode { titleKey: string; icon: string; children: AdminMenuLeaf[] }
+type AdminMenuNode = AdminMenuLeaf | AdminMenuGroupNode
+interface AdminMenuGroup { titleKey: string; nodes: AdminMenuNode[] }
 
-const MENUS: Record<string, AdminMenuNode[]> = {
+const MENUS: Record<string, AdminMenuGroup[]> = {
   admin: [
-    { path: '/admin/dashboard', titleKey: 'nav.admin.dashboard', icon: 'TrendCharts' },
-    { path: '/admin/bi', titleKey: 'nav.admin.bi', icon: 'DataAnalysis' },
-    { path: '/admin/devices', titleKey: 'nav.admin.devices', icon: 'Monitor' },
-    { path: '/admin/users', titleKey: 'nav.admin.users', icon: 'User' },
     {
-      titleKey: 'nav.admin.pets',
-      icon: 'Coin',
-      children: [
-        { path: '/admin/pets/archive', titleKey: 'nav.admin.petArchive', icon: 'Document' },
-        { path: '/admin/pets/health', titleKey: 'nav.admin.petHealth', icon: 'Monitor' },
-        { path: '/admin/pets/reports', titleKey: 'nav.admin.petReports', icon: 'Tickets' },
+      titleKey: 'nav.admin.groupWorkbench',
+      nodes: [
+        { path: '/admin/dashboard', titleKey: 'nav.admin.dashboard', icon: 'TrendCharts' },
+        { path: '/admin/bi', titleKey: 'nav.admin.bi', icon: 'DataAnalysis' },
       ],
     },
-    { path: '/admin/vets', titleKey: 'nav.admin.vets', icon: 'FirstAidKit' },
-    { path: '/admin/orders', titleKey: 'nav.admin.orders', icon: 'List' },
-    { path: '/admin/subscriptions', titleKey: 'nav.admin.subscriptions', icon: 'CreditCard' },
     {
-      titleKey: 'nav.admin.system',
-      icon: 'Setting',
-      children: [
-        { path: '/admin/system/users', titleKey: 'nav.admin.systemUsers', icon: 'User' },
-        { path: '/admin/system/roles', titleKey: 'nav.admin.roles', icon: 'Avatar' },
-        { path: '/admin/system/menus', titleKey: 'nav.admin.menus', icon: 'Menu' },
-        { path: '/admin/system/dicts', titleKey: 'nav.admin.dicts', icon: 'Notebook' },
-        { path: '/admin/system/logs', titleKey: 'nav.admin.logs', icon: 'Document' },
-        { path: '/admin/system/terminals', titleKey: 'nav.admin.terminals', icon: 'Monitor' },
-        { path: '/admin/system/i18n', titleKey: 'nav.admin.i18n', icon: 'Connection' },
+      titleKey: 'nav.admin.groupBiz',
+      nodes: [
+        { path: '/admin/devices', titleKey: 'nav.admin.devices', icon: 'Monitor' },
+        { path: '/admin/users', titleKey: 'nav.admin.users', icon: 'User' },
+        {
+          titleKey: 'nav.admin.pets',
+          icon: 'Coin',
+          children: [
+            { path: '/admin/pets/archive', titleKey: 'nav.admin.petArchive', icon: 'Document' },
+            { path: '/admin/pets/health', titleKey: 'nav.admin.petHealth', icon: 'Monitor' },
+            { path: '/admin/pets/reports', titleKey: 'nav.admin.petReports', icon: 'Tickets' },
+          ],
+        },
+        { path: '/admin/vets', titleKey: 'nav.admin.vets', icon: 'FirstAidKit' },
+        { path: '/admin/orders', titleKey: 'nav.admin.orders', icon: 'List' },
+        { path: '/admin/subscriptions', titleKey: 'nav.admin.subscriptions', icon: 'CreditCard' },
+      ],
+    },
+    {
+      titleKey: 'nav.admin.groupSystem',
+      nodes: [
+        {
+          titleKey: 'nav.admin.system',
+          icon: 'Setting',
+          children: [
+            { path: '/admin/system/users', titleKey: 'nav.admin.systemUsers', icon: 'User' },
+            { path: '/admin/system/roles', titleKey: 'nav.admin.roles', icon: 'Avatar' },
+            { path: '/admin/system/menus', titleKey: 'nav.admin.menus', icon: 'Menu' },
+            { path: '/admin/system/dicts', titleKey: 'nav.admin.dicts', icon: 'Notebook' },
+            { path: '/admin/system/logs', titleKey: 'nav.admin.logs', icon: 'Document' },
+            { path: '/admin/system/terminals', titleKey: 'nav.admin.terminals', icon: 'Monitor' },
+            { path: '/admin/system/i18n', titleKey: 'nav.admin.i18n', icon: 'Connection' },
+          ],
+        },
       ],
     },
   ],
@@ -59,12 +75,17 @@ const menus = computed(() => MENUS[auth.role] ?? [])
  *  详情类路由（如 /admin/pets/reports/:id）不在菜单叶子上，需回退到所属菜单叶子以保持高亮与展开。 */
 const activeMenu = computed(() => {
   const p = route.path
-  const leaves = menus.value.flatMap((n) => ('path' in n ? [n.path] : n.children.map((c) => c.path)))
+  const leaves = menus.value.flatMap((g) =>
+    g.nodes.flatMap((n) => ('path' in n ? [n.path] : n.children.map((c) => c.path))),
+  )
   const match = leaves
     .filter((leaf) => p === leaf || p.startsWith(leaf + '/'))
     .sort((a, b) => b.length - a.length)[0]
   return match ?? p
 })
+
+/** 侧边栏折叠：仅展示图标模式（224px ↔ 64px） */
+const collapsed = ref(false)
 
 const roleLabel = computed(() => (auth.role ? t(ROLE_LABEL[auth.role as Role]) : ''))
 const pageTitle = computed(() => (route.meta.titleKey ? t(route.meta.titleKey as string) : ''))
@@ -83,37 +104,58 @@ function onCommand(command: string) {
 <template>
   <el-config-provider :locale="i18nStore.elLocale">
     <el-container class="admin-layout">
-      <el-aside width="224px" class="admin-aside">
-        <div class="admin-logo">
-          <span class="logo-dot">🐾</span>
-          <div>
-            <div class="logo-title">{{ t('brand.name') }}</div>
-            <div class="logo-sub">{{ t('brand.platform') }}</div>
-          </div>
-        </div>
-        <el-menu class="admin-menu" :default-active="activeMenu" router>
-          <template v-for="node in menus" :key="'path' in node ? node.path : node.titleKey">
-            <el-sub-menu v-if="!('path' in node)" :index="node.titleKey">
-              <template #title>
-                <el-icon><component :is="node.icon" /></el-icon>
-                <span>{{ t(node.titleKey) }}</span>
+      <el-aside :width="collapsed ? '64px' : '224px'" class="admin-aside">
+        <el-menu
+          class="admin-menu"
+          :collapse="collapsed"
+          :collapse-transition="false"
+          :default-active="activeMenu"
+          router
+        >
+          <template v-for="group in menus" :key="group.titleKey">
+            <el-menu-item-group :title="t(group.titleKey)">
+              <template v-for="node in group.nodes" :key="'path' in node ? node.path : node.titleKey">
+                <el-sub-menu v-if="!('path' in node)" :index="node.titleKey">
+                  <template #title>
+                    <el-icon><component :is="node.icon" /></el-icon>
+                    <span>{{ t(node.titleKey) }}</span>
+                  </template>
+                  <el-menu-item v-for="c in node.children" :key="c.path" :index="c.path">
+                    <el-icon><component :is="c.icon" /></el-icon>
+                    <span>{{ t(c.titleKey) }}</span>
+                  </el-menu-item>
+                </el-sub-menu>
+                <el-menu-item v-else :index="node.path">
+                  <el-icon><component :is="node.icon" /></el-icon>
+                  <span>{{ t(node.titleKey) }}</span>
+                </el-menu-item>
               </template>
-              <el-menu-item v-for="c in node.children" :key="c.path" :index="c.path">
-                <el-icon><component :is="c.icon" /></el-icon>
-                <span>{{ t(c.titleKey) }}</span>
-              </el-menu-item>
-            </el-sub-menu>
-            <el-menu-item v-else :index="node.path">
-              <el-icon><component :is="node.icon" /></el-icon>
-              <span>{{ t(node.titleKey) }}</span>
-            </el-menu-item>
+            </el-menu-item-group>
           </template>
         </el-menu>
+
+        <div
+          class="aside-fold"
+          :title="t(collapsed ? 'common.unfold' : 'common.fold')"
+          @click="collapsed = !collapsed"
+        >
+          <el-icon><component :is="collapsed ? 'Expand' : 'Fold'" /></el-icon>
+          <span v-if="!collapsed">{{ t(collapsed ? 'common.unfold' : 'common.fold') }}</span>
+        </div>
       </el-aside>
 
       <el-container class="admin-body">
         <el-header class="admin-header">
-          <div class="header-title">{{ pageTitle }}</div>
+          <div class="header-left">
+            <div class="admin-logo">
+              <span class="logo-dot">🐾</span>
+              <div>
+                <div class="logo-title">{{ t('brand.name') }}</div>
+                <div class="logo-sub">{{ t('brand.platform') }}</div>
+              </div>
+            </div>
+            <div class="header-title">{{ pageTitle }}</div>
+          </div>
           <div class="header-right">
             <el-dropdown @command="(cmd: string) => i18nStore.applyLocale(cmd as AppLocale)">
               <span class="lang-chip">
@@ -160,48 +202,91 @@ function onCommand(command: string) {
 }
 
 .admin-aside {
-  background: #0f1b2d;
+  background: #f9fcf7;
+  border-right: 1px solid #e5e8eb;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.admin-logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 18px 20px;
-  color: #fff;
-  .logo-dot {
-    font-size: 26px;
-  }
-  .logo-title {
-    font-size: 17px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-  }
-  .logo-sub {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.5);
-    margin-top: 2px;
-  }
+  transition: width 0.2s ease;
 }
 
 .admin-menu {
   flex: 1;
   border-right: none;
   background: transparent;
+  padding: 8px 10px;
+  overflow-y: auto;
   --el-menu-bg-color: transparent;
-  --el-menu-text-color: rgba(255, 255, 255, 0.65);
-  --el-menu-hover-bg-color: rgba(0, 180, 166, 0.14);
-  --el-menu-active-color: #00b4a6;
-  --el-menu-item-height: 48px;
-  .el-menu-item {
-    margin: 2px 10px;
+  --el-menu-text-color: #555a52;
+  --el-menu-hover-bg-color: rgba(114, 209, 168, 0.18);
+  --el-menu-hover-text-color: #3c8a6c;
+  --el-menu-active-color: #3c8a6c;
+  --el-menu-item-height: 42px;
+  --el-menu-sub-item-height: 40px;
+
+  :deep(.el-menu-item-group__title) {
+    font-size: 12px;
+    color: #a8b3ab;
+    padding: 14px 16px 6px;
+  }
+
+  .el-menu-item,
+  .el-sub-menu__title {
     border-radius: 8px;
-    &.is-active {
-      background: rgba(0, 180, 166, 0.18);
+    margin-bottom: 2px;
+    font-size: 14px;
+    color: #555a52;
+    &:hover {
+      color: #3c8a6c;
     }
+  }
+
+  .el-menu-item.is-active {
+    background: rgba(114, 209, 168, 0.28);
+    color: #3c8a6c;
+    font-weight: 600;
+  }
+
+  .el-sub-menu {
+    &.is-active > .el-sub-menu__title {
+      color: #3c8a6c;
+      font-weight: 600;
+    }
+    :deep(.el-menu) {
+      background: transparent;
+    }
+  }
+
+  &.el-menu--collapse {
+    padding: 8px;
+    :deep(.el-menu-item-group__title) {
+      padding: 10px 0 4px;
+      text-align: center;
+    }
+    .el-menu-item,
+    .el-sub-menu__title {
+      padding: 0 16px;
+    }
+  }
+}
+
+.aside-fold {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 18px;
+  margin: 8px 10px;
+  border-radius: 8px;
+  color: #777777;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s;
+  white-space: nowrap;
+  &:hover {
+    background: rgba(114, 209, 168, 0.18);
+    color: #3c8a6c;
   }
 }
 
@@ -210,12 +295,43 @@ function onCommand(command: string) {
   align-items: center;
   justify-content: space-between;
   background: #fff;
-  border-bottom: 1px solid var(--sp-border);
+  border-bottom: 1px solid #e5e8eb;
   height: 60px;
-  .header-title {
-    font-size: 17px;
-    font-weight: 600;
+  padding: 0 20px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-width: 0;
+}
+
+.admin-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  .logo-dot {
+    font-size: 24px;
   }
+  .logo-title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #222222;
+  }
+  .logo-sub {
+    font-size: 11px;
+    color: #a8b3ab;
+    margin-top: 1px;
+  }
+}
+
+.header-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #222222;
+  white-space: nowrap;
 }
 
 .header-right {
@@ -231,7 +347,7 @@ function onCommand(command: string) {
   cursor: pointer;
   outline: none;
   font-size: 13px;
-  color: var(--sp-text);
+  color: #555a52;
 }
 
 .user-chip {
@@ -242,12 +358,12 @@ function onCommand(command: string) {
   outline: none;
   .user-name {
     font-size: 14px;
-    color: var(--sp-text);
+    color: #555a52;
   }
 }
 
 .admin-main {
-  background: var(--sp-bg);
+  background: #f9fcf7;
   padding: 20px;
   overflow-y: auto;
 }

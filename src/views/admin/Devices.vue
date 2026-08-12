@@ -32,7 +32,7 @@ function search() {
 }
 
 function batteryColor(b: number) {
-  if (b > 50) return '#00b4a6'
+  if (b > 50) return '#72d1a8'
   if (b > 20) return '#ff9500'
   return '#ff3b30'
 }
