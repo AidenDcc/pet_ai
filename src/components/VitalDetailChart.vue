@@ -29,46 +29,58 @@ const props = withDefaults(
 const elRef = ref<HTMLElement | null>(null)
 const { setOption } = useEchart(elRef)
 
-/** 单日逐小时 → 条形（≤48 点）；多日 → 细折线 + 彩色圆点 */
-const isDense = computed(() => props.points.length > 48)
-
-/** 全部点在同一天显示 HH:00，跨天显示 MM-DD */
-const axisLabel = computed(() => {
+/** 时间跨度 ≤24h（单日逐小时）→ 小时刻度；跨天 → 日期刻度 */
+const isHourMode = computed(() => {
   const pts = props.points
-  if (!pts.length) return 'HH:00'
-  const sameDay = pts.every((p) => dayjs(p.ts).isSame(dayjs(pts[0].ts), 'day'))
-  return sameDay ? 'HH:00' : 'MM-DD'
+  return pts.length > 0 && pts[pts.length - 1].ts - pts[0].ts <= 24 * 3600000
 })
+
+/** 单日逐小时 → 柱状图；多日（周/月/季）→ 点线图 */
+const isLine = computed(() => !isHourMode.value)
+
+/** 跨天（周/月/季）日期标签：放得下则逐日显示，放不下只保留 首 / 中 / 尾 三个刻度 */
+function buildDateLabels(pts: Point[]): string[] {
+  const n = pts.length
+  if (!n) return []
+  // 估算 MM-DD 标签宽度（≈24px/个）与绘图区宽（≈300px）的容纳关系
+  if (n * 24 <= 300) return pts.map((p) => dayjs(p.ts).format('MM-DD'))
+  const mid = Math.floor((n - 1) / 2)
+  return pts.map((p, i) => (i === 0 || i === mid || i === n - 1 ? dayjs(p.ts).format('MM-DD') : ''))
+}
 
 function buildOption(): ECOption {
   const pts = props.points
+  const hourMode = isHourMode.value
+  // 分类轴标签：单日=逐小时 HH:00；跨天=全部日期 或 首/中/尾日期
+  const labels = hourMode ? pts.map((p) => dayjs(p.ts).format('HH:00')) : buildDateLabels(pts)
+
   const data = pts.map((p, i) => ({
-    value: [p.ts, p.value],
+    value: [labels[i], p.value],
     itemStyle: { color: props.colors[i] ?? props.color },
   }))
-  const axisFormat = axisLabel.value === 'HH:00' ? 'HH:mm' : 'MM-DD'
 
   const base: ECOption = {
     tooltip: {
       trigger: 'axis',
       formatter: (params: unknown) => {
-        const list = (params as { value: [number, number] }[]) ?? []
+        const list = (params as { dataIndex: number; value: [string | number, number] }[]) ?? []
         const p = list[0]
         if (!p) return ''
-        return `${dayjs(p.value[0]).format(axisFormat)}<br/><b>${p.value[1]}${props.unit}</b>`
+        const pt = pts[p.dataIndex]
+        const label = String(p.value[0]) || (pt ? dayjs(pt.ts).format('MM-DD') : '')
+        return `${label}<br/><b>${p.value[1]}${props.unit}</b>`
       },
     },
-    grid: { left: 44, right: 12, top: 18, bottom: 26 },
+    grid: { left: 34, right: 8, top: 16, bottom: 24 },
     xAxis: {
-      type: 'time',
+      type: 'category',
+      data: labels,
+      // 单日柱状图两侧留白；多日折线贴边展示
+      boundaryGap: isLine.value ? false : true,
       axisLine: { lineStyle: { color: '#e4e9f0' } },
-      axisLabel: {
-        color: '#a3b0c0',
-        fontSize: 10,
-        formatter: (v: number) => dayjs(v).format(axisLabel.value),
-      },
       axisTick: { show: false },
       splitLine: { show: false },
+      axisLabel: { color: '#a3b0c0', fontSize: 10 },
     },
     yAxis: {
       type: 'value',
@@ -78,7 +90,7 @@ function buildOption(): ECOption {
     },
   }
 
-  const series: ECOption['series'] = isDense.value
+  const series: ECOption['series'] = isLine.value
     ? [
         {
           type: 'line',
@@ -92,7 +104,10 @@ function buildOption(): ECOption {
         {
           type: 'bar',
           data,
-          barWidth: Math.max(3, Math.min(16, 300 / Math.max(pts.length, 1))),
+          // 柱宽随点数自适应并留出间隙，避免高密度小时柱覆盖
+          barWidth: Math.max(4, Math.min(16, Math.floor(280 / Math.max(pts.length, 1)) - 4)),
+          // 柱顶圆弧、柱脚平底
+          itemStyle: { borderRadius: [5, 5, 0, 0] },
         },
       ]
 

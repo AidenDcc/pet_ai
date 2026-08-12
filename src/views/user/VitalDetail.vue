@@ -765,7 +765,7 @@ watch([petId, metricKey, period, selectedDate], () => {
   background: #fff;
   border: 1px solid #f0f3f8;
   border-radius: 16px;
-  padding: 18px 16px 14px;
+  padding: 18px 10px 14px;
 
   .detail-head {
     display: flex;

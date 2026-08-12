@@ -67,7 +67,8 @@ defineMock([
         sleep: '深度等级',
       }
       if (days > 1) {
-        const agg = dailyAgg[petId] ?? []
+        // 按 days 截取最近 N 天：周=7 / 月=30 / 季度=90
+        const agg = (dailyAgg[petId] ?? []).slice(-days)
         // activity / sleep：保留原有日汇总字段；四体征：返回日均值点位
         if (type === 'activity' || type === 'sleep') {
           const keyMap: Record<'activity' | 'sleep', 'avgHeartRate' | 'steps' | 'sleepHours'> = {
