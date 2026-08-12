@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showToast } from 'vant'
 import { getMyPetsApi, type PetJoined } from '@/api/modules/pet'
-import { getDeviceListApi, getDeviceTrackApi, type DeviceJoined } from '@/api/modules/device'
+import { getDeviceListApi, getDeviceTrackApi, commandDeviceApi, type DeviceJoined } from '@/api/modules/device'
 import { getHealthSummaryApi, type HealthSummary } from '@/api/modules/health'
 import { getFencesApi, type PetFence } from '@/api/modules/fence'
 import { getExerciseSummaryApi, type ExerciseState } from '@/api/modules/exercise'
@@ -13,7 +13,7 @@ import { SPECIES_ICON, DEVICE_STATUS } from '@/utils/consts'
 import { petAvatarSrc } from '@/utils/petAvatar'
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const METRICS: { key: string; labelKey: string; unitKey: string; color: string; getValue: (s: HealthSummary) => number | string }[] = [
   { key: 'temperature', labelKey: 'user.health.temperature', unitKey: 'user.health.degreeC', color: '#ff9f43', getValue: (s) => s.temperature.latest + '°' },
@@ -108,6 +108,188 @@ function goFenceManage() {
   const pet = activePet.value
   if (!pet) return
   router.push(`/user/health/fence/${pet.id}`)
+}
+
+/** 快捷功能：问诊 —— 直达选医生界面（可选择医生与宠物发起问诊） */
+function goConsult() {
+  router.push('/user/consult/doctors')
+}
+
+/* ==================== 语音对讲（对讲机形式） ==================== */
+const voiceVisible = ref(false)
+const talking = ref(false) // 按住录音中
+const talkCancelled = ref(false)
+const recSeconds = ref(0)
+const recSupported = ref(true)
+const channelStatus = ref<'idle' | 'talking' | 'incoming'>('idle')
+
+let recTimer: number | undefined
+let recChunks: Blob[] = []
+let recorder: MediaRecorder | null = null
+let mediaStream: MediaStream | null = null
+let talkStartPos: { x: number; y: number } | null = null
+let unsupportedTold = false
+
+const channelText = computed(() => {
+  const map = {
+    idle: t('user.health.voiceChannelIdle'),
+    talking: t('user.health.voiceChannelTalking'),
+    incoming: t('user.health.voiceChannelIncoming'),
+  }
+  return map[channelStatus.value]
+})
+
+/** 模拟对方（项圈 / 宠物）实时讲话 */
+function speak(text: string) {
+  if (!('speechSynthesis' in window)) return
+  window.speechSynthesis.cancel()
+  const u = new SpeechSynthesisUtterance(text)
+  u.lang = locale.value === 'zh-CN' ? 'zh-CN' : 'en-US'
+  window.speechSynthesis.speak(u)
+}
+
+function triggerPeerReply() {
+  channelStatus.value = 'incoming'
+  speak(t('user.health.voicePeerReply', { name: activePet.value?.name ?? '' }))
+  window.setTimeout(() => {
+    if (channelStatus.value === 'incoming') channelStatus.value = 'idle'
+  }, 2600)
+}
+
+async function startTalk(e: TouchEvent | MouseEvent) {
+  e.preventDefault()
+  if (!voiceVisible.value || talking.value) return
+  if (!activePet.value) {
+    showToast(t('user.health.deviceUnbound'))
+    return
+  }
+  talking.value = true
+  talkCancelled.value = false
+  recSeconds.value = 0
+  recChunks = []
+  channelStatus.value = 'talking'
+  const pt = (e as TouchEvent).touches?.[0]
+  talkStartPos = pt ? { x: pt.clientX, y: pt.clientY } : { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY }
+  // 优先真实录音，失败则退回模拟对讲
+  try {
+    if (!mediaStream) mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    if (!talking.value) {
+      // 用户已松开：本次不录音
+      mediaStream.getTracks().forEach((tr) => tr.stop())
+      mediaStream = null
+      return
+    }
+    if (mediaStream && window.MediaRecorder) {
+      recorder = new MediaRecorder(mediaStream)
+      recorder.ondataavailable = (ev) => { if (ev.data.size) recChunks.push(ev.data) }
+      recorder.start()
+      recSupported.value = true
+    } else {
+      recSupported.value = false
+    }
+  } catch {
+    recSupported.value = false
+  }
+  recTimer = window.setInterval(() => { recSeconds.value++ }, 1000)
+}
+
+/** 上滑超过阈值则取消发送（松开不发送） */
+function onTalkMove(e: TouchEvent) {
+  const tch = e.touches?.[0]
+  if (!talkStartPos || !tch) return
+  if (Math.hypot(tch.clientX - talkStartPos.x, tch.clientY - talkStartPos.y) > 36) {
+    talkCancelled.value = true
+  }
+}
+
+function stopTalk() {
+  if (!talking.value) return
+  talking.value = false
+  if (recTimer) { window.clearInterval(recTimer); recTimer = undefined }
+  if (talkCancelled.value) {
+    channelStatus.value = 'idle'
+    discardRecording()
+    showToast(t('user.health.voiceCancelled'))
+    return
+  }
+  const finishSend = () => {
+    if (!recSupported.value && !unsupportedTold) {
+      unsupportedTold = true
+      showToast(t('user.health.voiceMicUnsupported'))
+    }
+    showToast(t('user.health.voiceSent'))
+    // 本地回放自己的录音（确认已发送），随后对方应答
+    if (recSupported.value && recChunks.length) {
+      const blob = new Blob(recChunks, { type: 'audio/webm;codecs=opus' })
+      const url = URL.createObjectURL(blob)
+      const au = new Audio(url)
+      au.onended = () => URL.revokeObjectURL(url)
+      au.play().catch(() => {})
+      window.setTimeout(triggerPeerReply, 1200)
+    } else {
+      window.setTimeout(triggerPeerReply, 400)
+    }
+  }
+  if (recorder && recorder.state !== 'inactive') {
+    recorder.onstop = finishSend
+    recorder.stop()
+  } else {
+    finishSend()
+  }
+  recorder = null
+}
+
+function discardRecording() {
+  if (recorder && recorder.state !== 'inactive') {
+    try { recorder.stop() } catch { /* ignore */ }
+  }
+  recorder = null
+  recChunks = []
+}
+
+/** 关闭语音弹层：停止录音并释放麦克风 */
+function closeVoice() {
+  if (recTimer) { window.clearInterval(recTimer); recTimer = undefined }
+  talking.value = false
+  channelStatus.value = 'idle'
+  discardRecording()
+  if (mediaStream) {
+    mediaStream.getTracks().forEach((tr) => tr.stop())
+    mediaStream = null
+  }
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+}
+
+/* ==================== 远程指令（与设备管理一致） ==================== */
+const commandVisible = ref(false)
+const cmdSending = ref('')
+const COMMAND_ITEMS = [
+  { value: 'find', icon: '🔔', labelKey: 'user.devices.cmdFind' },
+  { value: 'light', icon: '💡', labelKey: 'user.devices.cmdLight' },
+  { value: 'refresh', icon: '🛰️', labelKey: 'user.devices.cmdRefresh' },
+]
+
+async function sendCommand(cmd: { value: string }) {
+  if (!activeDevice.value) {
+    showToast(t('user.health.deviceUnbound'))
+    return
+  }
+  if (activeDevice.value.status !== 'online') {
+    showToast(t('user.devices.offlineCmd'))
+    return
+  }
+  if (cmdSending.value) return
+  cmdSending.value = cmd.value
+  try {
+    const res = await commandDeviceApi({ deviceId: activeDevice.value.id, command: cmd.value })
+    showToast(res.message)
+    // 请求定位后刷新轨迹
+    if (cmd.value === 'refresh') loadPetData()
+  } catch (e) {
+    showToast((e as Error).message || t('user.devices.cmdFailed'))
+  } finally {
+    cmdSending.value = ''
+  }
 }
 
 function getGaitLabel(gait: string): string {
@@ -241,19 +423,111 @@ loadAll()
           </div>
         </div>
 
-        <!-- 围栏管理入口 -->
-        <div class="fence-entry" @click="goFenceManage">
-          <div class="fence-entry-left">
-            <span class="fence-entry-icon">📍</span>
-            <span class="fence-entry-text">{{ t('user.health.manageFence') }}</span>
+        <!-- 快捷功能：围栏 / 语音 / 问诊 / 指令 -->
+        <div class="section-title section-title--mt">{{ t('user.health.quickTools') }}</div>
+        <div class="feature-grid">
+          <div class="feature-item" @click="goFenceManage">
+            <div class="feature-icon" style="--fi-bg: #e0f7f4">📍</div>
+            <span class="feature-label">{{ t('user.health.fence') }}</span>
+            <span v-if="fences.length" class="feature-badge">{{ fences.length }}</span>
           </div>
-          <div class="fence-entry-right">
-            <span v-if="fences.length" class="fence-badge">{{ t('user.health.fenceCount', { n: fences.length }) }}</span>
-            <van-icon name="arrow" size="14" color="#999" />
+          <div class="feature-item" @click="voiceVisible = true">
+            <div class="feature-icon" style="--fi-bg: #e8f1fe">🎙️</div>
+            <span class="feature-label">{{ t('user.health.voice') }}</span>
+          </div>
+          <div class="feature-item" @click="goConsult">
+            <div class="feature-icon" style="--fi-bg: #ffecec">🩺</div>
+            <span class="feature-label">{{ t('user.health.consult') }}</span>
+          </div>
+          <div class="feature-item" @click="commandVisible = true">
+            <div class="feature-icon" style="--fi-bg: #f0eaff">🎛️</div>
+            <span class="feature-label">{{ t('user.health.command') }}</span>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- 语音对讲弹层（对讲机形式，约 2/5 屏） -->
+    <van-popup
+      v-model:show="voiceVisible"
+      position="bottom"
+      round
+      :style="{ height: '40%' }"
+      class="voice-popup"
+      teleport="#phone-teleport"
+      @closed="closeVoice"
+    >
+      <div class="voice-body">
+        <div class="voice-header">
+          <div class="voice-title">
+            <span class="voice-dot" :class="`is-${channelStatus}`" />
+            {{ t('user.health.voiceTitle') }}
+          </div>
+          <span class="voice-channel">{{ channelText }}</span>
+        </div>
+
+        <div class="voice-stage">
+          <div class="voice-avatar">
+            <img :src="petAvatarSrc(activePet?.name ?? '') || activePet?.avatar" alt="" />
+          </div>
+          <div class="voice-pet">{{ activePet?.name }}</div>
+
+          <!-- 对讲机：按住说话，松开发送；上滑取消 -->
+          <div
+            class="ptt-btn"
+            :class="{ 'is-talking': talking }"
+            @touchstart.prevent="startTalk"
+            @touchend.prevent="stopTalk"
+            @touchcancel.prevent="stopTalk"
+            @touchmove.prevent="onTalkMove"
+            @mousedown.prevent="startTalk"
+            @mouseup.prevent="stopTalk"
+            @mouseleave.prevent="stopTalk"
+          >
+            <span class="ptt-mic">{{ talking ? '🎙️' : '🎤' }}</span>
+            <span class="ptt-text">
+              {{
+                talking
+                  ? talkCancelled
+                    ? t('user.health.voiceCancelled')
+                    : t('user.health.voiceRecording', { s: recSeconds })
+                  : t('user.health.voiceHoldTalk')
+              }}
+            </span>
+            <span v-if="talking && !talkCancelled" class="ptt-hint">{{ t('user.health.voiceReleaseHint') }}</span>
+          </div>
+        </div>
+      </div>
+    </van-popup>
+
+    <!-- 远程指令弹层（约 2/5 屏） -->
+    <van-popup
+      v-model:show="commandVisible"
+      position="bottom"
+      round
+      :style="{ height: '40%' }"
+      class="command-popup"
+      teleport="#phone-teleport"
+    >
+      <div class="command-body">
+        <div class="command-title">{{ t('user.health.commandTitle') }}</div>
+        <div class="command-desc">{{ t('user.health.commandDesc') }}</div>
+        <div class="command-list">
+          <div
+            v-for="cmd in COMMAND_ITEMS"
+            :key="cmd.value"
+            class="command-item"
+            :class="{ 'is-loading': cmdSending === cmd.value }"
+            @click="sendCommand(cmd)"
+          >
+            <span class="command-icon">{{ cmd.icon }}</span>
+            <span class="command-label">{{ t(cmd.labelKey) }}</span>
+            <van-loading v-if="cmdSending === cmd.value" size="16" color="#999" />
+            <van-icon v-else name="arrow" color="#999" />
+          </div>
+        </div>
+      </div>
+    </van-popup>
 
     <!-- 加载/空状态 -->
     <div v-if="!loading && !pets.length" class="monitor-empty">
@@ -289,7 +563,7 @@ loadAll()
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 14px 6px 6px;
+    padding: 2px 2px 2px 2px;
     border-radius: 24px;
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(8px);
@@ -310,6 +584,7 @@ loadAll()
     .pet-tab-name {
       font-size: 14px;
       font-weight: 600;
+      margin-right: 6px;
       color: #333;
       white-space: nowrap;
     }
@@ -569,42 +844,256 @@ loadAll()
   }
 }
 
-/* 围栏管理入口 */
-.fence-entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 12px;
-  padding: 10px 12px;
-  background: linear-gradient(135deg, #fff7f0, #fff);
-  border: 1px solid #fde8d5;
-  border-radius: 12px;
-  cursor: pointer;
+/* 快捷功能 2x2 网格（围栏 / 语音 / 问诊 / 指令） */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
 
-  .fence-entry-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    .fence-entry-icon {
-      font-size: 18px;
+  .feature-item {
+    position: relative;
+    text-align: center;
+    padding: 10px 4px;
+    border-radius: 12px;
+    background: #f7f9fc;
+    cursor: pointer;
+    transition: transform 0.2s;
+
+    &:active {
+      transform: scale(0.94);
     }
-    .fence-entry-text {
-      font-size: 14px;
+
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 6px;
+      border-radius: 12px;
+      background: var(--fi-bg, #f0f3f8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .feature-label {
+      font-size: 11px;
       font-weight: 600;
       color: #333;
     }
-  }
 
-  .fence-entry-right {
+    .feature-badge {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: 8px;
+      background: var(--sp-primary, #ff6b00);
+      color: #fff;
+      font-size: 10px;
+      line-height: 16px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+  }
+}
+
+/* ===== 语音对讲弹层 ===== */
+.voice-popup {
+  overflow: hidden;
+}
+
+.voice-body {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px 20px;
+  box-sizing: border-box;
+}
+
+.voice-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  .voice-title {
     display: flex;
     align-items: center;
-    gap: 6px;
-    .fence-badge {
-      font-size: 11px;
-      color: var(--sp-primary);
-      background: #fff0e5;
-      padding: 2px 8px;
-      border-radius: 10px;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  .voice-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #c0c4cc;
+
+    &.is-talking {
+      background: #ff3b30;
+      animation: voice-blink 1s infinite;
+    }
+
+    &.is-incoming {
+      background: #4cd964;
+      animation: voice-blink 1s infinite;
+    }
+  }
+
+  .voice-channel {
+    font-size: 12px;
+    color: var(--sp-text-secondary);
+  }
+}
+
+.voice-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  .voice-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #eef1f5;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .voice-pet {
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+  }
+
+  /* 对讲机 PTT 按钮 */
+  .ptt-btn {
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(145deg, #5b8ff9, #3b6ff0);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    box-shadow: 0 8px 20px rgba(59, 111, 240, 0.35);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+
+    &.is-talking {
+      background: linear-gradient(145deg, #ff5f5f, #ff3b30);
+      box-shadow: 0 8px 20px rgba(255, 59, 48, 0.4);
+      animation: voice-pulse-ring 1.2s infinite;
+    }
+
+    .ptt-mic {
+      font-size: 26px;
+      line-height: 1;
+    }
+
+    .ptt-text {
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      padding: 0 10px;
+    }
+
+    .ptt-hint {
+      font-size: 10px;
+      opacity: 0.85;
+    }
+  }
+}
+
+@keyframes voice-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes voice-pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4); }
+  70% { box-shadow: 0 0 0 16px rgba(255, 59, 48, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+}
+
+/* ===== 远程指令弹层 ===== */
+.command-popup {
+  overflow: hidden;
+}
+
+.command-body {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px 20px;
+  box-sizing: border-box;
+}
+
+.command-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+}
+
+.command-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--sp-text-secondary);
+}
+
+.command-list {
+  flex: 1;
+  min-height: 0;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .command-item {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    border-radius: 14px;
+    background: #f7f9fc;
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.2s;
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &.is-loading {
+      opacity: 0.6;
+    }
+
+    .command-icon {
+      font-size: 22px;
+    }
+
+    .command-label {
+      flex: 1;
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
     }
   }
 }

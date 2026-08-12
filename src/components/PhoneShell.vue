@@ -235,7 +235,9 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 100;
+  /* 需高于页面内所有同层遮罩（如守护页信息面板 z-index:100），
+     否则 teleport 进来的弹层会被 DOM 顺序更靠后的页面元素盖住 */
+  z-index: 400;
 
   /* allow interaction with children */
   > * {
