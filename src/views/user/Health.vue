@@ -21,6 +21,7 @@ const METRICS: { key: string; labelKey: string; unitKey: string; color: string; 
   { key: 'heartRate', labelKey: 'user.health.heartRate', unitKey: 'user.health.bpm', color: '#ff6b6b', getValue: (s) => s.heartRate.latest },
   { key: 'spo2', labelKey: 'user.health.spo2', unitKey: 'user.health.percent', color: '#00b4a6', getValue: (s) => s.spo2.latest + '%' },
   { key: 'respiratoryRate', labelKey: 'user.health.respiratory', unitKey: 'user.health.bpm', color: '#5b8ff9', getValue: (s) => s.respiratoryRate.latest },
+  { key: 'calorie', labelKey: 'user.health.calorie', unitKey: 'user.health.calorieUnit', color: '#34c759', getValue: (s) => s.calorie.latest },
 ]
 
 const EXERCISE_METRICS = [
@@ -811,10 +812,10 @@ loadAll()
   }
 }
 
-/* 健康指标 2x2 网格 */
+/* 健康指标 1x5 网格（体温 / 心率 / 血氧 / 呼吸 / 卡路里） */
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
 
   .metric-item {

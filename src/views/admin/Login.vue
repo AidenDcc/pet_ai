@@ -23,7 +23,7 @@ const { account, password, remember, loading, demoAccounts, submitPwd, fillDemo 
     <el-card class="card" shadow="always">
       <!-- 品牌区 -->
       <div class="brand">
-        <div class="brand-badge">📊</div>
+        <div class="brand-badge">🐾</div>
         <div class="brand-name">{{ t('brand.name') }}</div>
         <h1 class="title">{{ t('login.admin.welcome') }}</h1>
         <p class="subtitle">{{ t('login.admin.subtitle') }}</p>

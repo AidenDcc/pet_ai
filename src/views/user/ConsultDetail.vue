@@ -23,6 +23,8 @@ const VITALS = computed(() => {
     { label: t('user.health.heartRate'), value: `${h.heartRate}`, unit: t('user.health.bpm'), color: '#ff6b6b' },
     { label: t('user.health.spo2'), value: `${h.spo2}%`, color: '#00b4a6' },
     { label: t('user.health.respiratory'), value: `${h.respiratoryRate}`, unit: t('user.health.bpm'), color: '#5b8ff9' },
+    // 卡路里为新增指标，历史快照可能缺失该字段，缺失时展示占位符
+    { label: t('user.health.calorie'), value: h.calorie != null ? `${h.calorie}` : '--', unit: t('user.health.calorieUnit'), color: '#34c759' },
     { label: t('user.consult.activity'), value: `${Math.round(h.activityPercent)}%`, color: '#ffb300' },
     { label: t('user.consult.sleep'), value: `${h.sleepHours.toFixed(1)}h`, color: '#9b59b6' },
   ]
@@ -319,7 +321,7 @@ load()
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 
   .metric-item {

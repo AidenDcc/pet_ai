@@ -28,6 +28,8 @@ function fallbackHealth(pet: PetInfo): ConsultationHealthSnapshot | null {
     heartRate: last.heartRate,
     spo2: last.spo2,
     respiratoryRate: last.respiratoryRate,
+    // 卡路里：按单条遥测活动的步数折算全日消耗（与健康汇总口径一致）
+    calorie: Math.round(last.activity * 0.05 * 24),
     activityPercent: Math.min(100, Math.round((last.activity / 60) * 100)),
     sleepHours: 0,
     updatedAt: last.ts,

@@ -10,6 +10,7 @@ export interface HealthSummary {
   respiratoryRate: { latest: number; avg: number }
   spo2: { latest: number; avg: number }
   temperature: { latest: number; avg: number }
+  calorie: { latest: number; avg: number }
   activity: { steps: number; goal: number; percent: number }
   sleep: { hours: number; stage: string }
   overall: string

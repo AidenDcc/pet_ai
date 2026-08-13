@@ -37,6 +37,8 @@ interface MetricConfig {
   unit: string
   color: string
   hasLegend: boolean
+  /** 是否展示周期自动总结文案（卡路里等无正常区间的指标关闭） */
+  showSummary?: boolean
   decimals?: number
   level: (v: number, species: 'dog' | 'cat') => Level
 }
@@ -89,6 +91,15 @@ const METRICS: MetricConfig[] = [
       if (v >= r.warnLow && v <= r.warnHigh) return 'warn'
       return 'danger'
     },
+  },
+  {
+    key: 'calorie',
+    labelKey: 'user.health.calorie',
+    unit: 'kcal',
+    color: '#34c759',
+    hasLegend: false,
+    showSummary: false,
+    level: () => 'normal',
   },
 ]
 
@@ -219,6 +230,7 @@ function latestOf(): number | undefined {
     case 'temperature': return s.temperature.latest
     case 'heartRate': return s.heartRate.latest
     case 'spo2': return s.spo2.latest
+    case 'calorie': return s.calorie.latest
     default: return s.respiratoryRate.latest
   }
 }
@@ -243,13 +255,16 @@ async function loadData() {
   loading.value = true
   try {
     const days = currentPeriod.value.days
-    // 并行拉取四项基础指标周期序列（当前指标点位复用为下方走势图）
+    // 并行拉取周期序列：四项基础指标固定拉取（供周期分析报告复用），当前指标不在其中时追加自身序列
+    const fetchKeys = ANALYSIS_METRICS.includes(activeMetric.value.key)
+      ? ANALYSIS_METRICS
+      : [...ANALYSIS_METRICS, activeMetric.value.key]
     const [s, ...series] = await Promise.all([
       getHealthSummaryApi(petId.value),
-      ...ANALYSIS_METRICS.map((m) => getHealthSeriesApi(petId.value, m, days)),
+      ...fetchKeys.map((m) => getHealthSeriesApi(petId.value, m, days)),
     ])
     summary.value = s
-    const activeIdx = ANALYSIS_METRICS.indexOf(activeMetric.value.key)
+    const activeIdx = fetchKeys.indexOf(activeMetric.value.key)
     points.value = series[activeIdx >= 0 ? activeIdx : 0]?.points ?? []
     analysisSeries.value = ANALYSIS_METRICS.map((m, i) => ({ key: m, points: series[i].points }))
   } catch (e) {
@@ -299,6 +314,8 @@ const levelCounts = computed(() => {
 
 const summaryText = computed(() => {
   if (!points.value.length) return ''
+  // 无正常区间概念的指标（如卡路里）不展示周期自动总结
+  if (activeMetric.value.showSummary === false) return ''
   const { normal, warn, danger } = levelCounts.value
   const total = normal + warn + danger
   const name = t(activeMetric.value.labelKey)

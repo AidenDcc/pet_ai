@@ -142,6 +142,7 @@ export type HealthMetricType =
   | 'temperature'
   | 'activity'
   | 'sleep'
+  | 'calorie'
 
 /** 指标正常参考区间 */
 export interface NormalRange {
@@ -309,6 +310,7 @@ export interface ConsultationHealthSnapshot {
   heartRate: number
   spo2: number
   respiratoryRate: number
+  calorie: number
   activityPercent: number
   sleepHours: number
   updatedAt: number

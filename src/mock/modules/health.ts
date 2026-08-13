@@ -10,6 +10,10 @@ export const RANGES: Record<string, NormalRange> = {
   activity: { min: 0, max: 8000, unit: '步' },
 }
 
+/** 卡路里换算：每步消耗约 0.05 千卡（演示数据，按活动量/步数折算） */
+const CAL_PER_STEP = 0.05
+const calorieOf = (steps: number) => Math.round(steps * CAL_PER_STEP)
+
 defineMock([
   // 今日健康概览
   {
@@ -38,6 +42,7 @@ defineMock([
         respiratoryRate: { latest: latest.respiratoryRate, avg: avg(data.map((m) => m.respiratoryRate)) },
         spo2: { latest: latest.spo2, avg: avg(data.map((m) => m.spo2)) },
         temperature: { latest: latest.temperature, avg: avg(data.map((m) => m.temperature)) },
+        calorie: { latest: calorieOf(steps), avg: calorieOf(steps) },
         activity: {
           steps,
           goal,
@@ -65,11 +70,12 @@ defineMock([
         temperature: '°C',
         activity: '步',
         sleep: '深度等级',
+        calorie: 'kcal',
       }
       if (days > 1) {
         // 按 days 截取最近 N 天：周=7 / 月=30 / 季度=90
         const agg = (dailyAgg[petId] ?? []).slice(-days)
-        // activity / sleep：保留原有日汇总字段；四体征：返回日均值点位
+        // activity / sleep：保留原有日汇总字段；calorie：按日步数折算；四体征：返回日均值点位
         if (type === 'activity' || type === 'sleep') {
           const keyMap: Record<'activity' | 'sleep', 'avgHeartRate' | 'steps' | 'sleepHours'> = {
             activity: 'steps',
@@ -80,6 +86,13 @@ defineMock([
             points: agg.map((d) => ({ ts: d.ts, value: d[key] })),
             unit: unitMap[type],
             range: RANGES[type] ?? null,
+          }
+        }
+        if (type === 'calorie') {
+          return {
+            points: agg.map((d) => ({ ts: d.ts, value: calorieOf(d.steps) })),
+            unit: unitMap.calorie,
+            range: null,
           }
         }
         return {
@@ -94,7 +107,9 @@ defineMock([
               ts: m.ts,
               value: m.sleepStage === 'awake' ? 0 : m.sleepStage === 'deep' ? 2 : 1,
             }))
-          : data.map((m) => ({ ts: m.ts, value: m[type] as number }))
+          : type === 'calorie'
+            ? data.map((m) => ({ ts: m.ts, value: calorieOf(m.activity) }))
+            : data.map((m) => ({ ts: m.ts, value: m[type] as number }))
       return { points, unit: unitMap[type], range: RANGES[type] ?? null }
     },
   },

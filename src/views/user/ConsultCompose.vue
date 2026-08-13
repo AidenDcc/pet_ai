@@ -100,6 +100,7 @@ const VITALS = computed(() => {
     { label: t('user.health.heartRate'), value: `${s.heartRate.latest}`, unit: t('user.health.bpm'), color: '#ff6b6b' },
     { label: t('user.health.spo2'), value: `${s.spo2.latest}%`, color: '#00b4a6' },
     { label: t('user.health.respiratory'), value: `${s.respiratoryRate.latest}`, unit: t('user.health.bpm'), color: '#5b8ff9' },
+    { label: t('user.health.calorie'), value: `${s.calorie.latest}`, unit: t('user.health.calorieUnit'), color: '#34c759' },
     { label: t('user.consult.activity'), value: `${Math.round(s.activity.percent)}%`, color: '#ffb300' },
     { label: t('user.consult.sleep'), value: `${s.sleep.hours.toFixed(1)}h`, color: '#9b59b6' },
   ]
@@ -138,6 +139,7 @@ async function onSubmit() {
             heartRate: summary.value.heartRate.latest,
             spo2: summary.value.spo2.latest,
             respiratoryRate: summary.value.respiratoryRate.latest,
+            calorie: summary.value.calorie.latest,
             activityPercent: summary.value.activity.percent,
             sleepHours: summary.value.sleep.hours,
             updatedAt: summary.value.updatedAt,
@@ -389,7 +391,7 @@ loadContext()
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 
   .metric-item {
