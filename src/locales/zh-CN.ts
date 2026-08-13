@@ -762,6 +762,8 @@ export default {
       weight: '体重',
       weightUnit: 'kg',
       sterilized: '绝育',
+      isPregnant: '是否怀孕',
+      isLactating: '是否哺乳期',
       microchip: '芯片号',
       createdAt: '建档时间',
       save: '保存',

@@ -762,6 +762,8 @@ export default {
       weight: 'Weight',
       weightUnit: 'kg',
       sterilized: 'Neutered',
+      isPregnant: 'Pregnant',
+      isLactating: 'Lactating',
       microchip: 'Microchip',
       createdAt: 'Created at',
       save: 'Save',

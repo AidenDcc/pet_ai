@@ -114,6 +114,8 @@ defineMock([
         ownerId: user.id,
         deviceId: null,
         sterilized: body.sterilized ?? false,
+        isPregnant: body.isPregnant ?? false,
+        isLactating: body.isLactating ?? false,
         microchip: `${Math.floor(Math.random() * 900000000 + 100000000)}${Math.floor(Math.random() * 900000000 + 100000000)}`,
         createdAt: now,
         vaccines: body.vaccines ?? [],

@@ -52,6 +52,10 @@ export interface PetInfo {
   ownerId: string
   deviceId: string | null
   sterilized: boolean
+  /** 是否怀孕 */
+  isPregnant: boolean
+  /** 是否哺乳期 */
+  isLactating: boolean
   microchip: string
   createdAt: string
   /** 疫苗记录 */

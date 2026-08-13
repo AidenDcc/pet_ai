@@ -27,6 +27,8 @@ const form = ref<{
   weight: number
   gender: 'male' | 'female'
   sterilized: boolean
+  isPregnant: boolean
+  isLactating: boolean
   avatar: string
   vaccines: PetInfo['vaccines']
   dewormings: PetInfo['dewormings']
@@ -36,6 +38,8 @@ const form = ref<{
   weight: 0,
   gender: 'male',
   sterilized: false,
+  isPregnant: false,
+  isLactating: false,
   avatar: '',
   vaccines: [],
   dewormings: [],
@@ -58,6 +62,8 @@ async function load() {
       weight: pet.value.weight,
       gender: pet.value.gender,
       sterilized: pet.value.sterilized,
+      isPregnant: pet.value.isPregnant,
+      isLactating: pet.value.isLactating,
       avatar: pet.value.avatar,
       vaccines: [...(pet.value.vaccines ?? [])],
       dewormings: [...(pet.value.dewormings ?? [])],
@@ -172,10 +178,18 @@ loadPushed()
         <span class="field-label">{{ t('user.petCare.avatar') }}</span>
         <PetAvatarUploader v-model="form.avatar" />
       </div>
-      <van-field v-model="form.name" :label="t('user.profile.nickname')" :placeholder="t('user.profile.nicknamePlaceholder')" />
+      <van-field
+        v-model="form.name"
+        label-align="left"
+        input-align="right"
+        :label="t('user.profile.nickname')"
+        :placeholder="t('user.profile.nicknamePlaceholder')"
+      />
       <van-field
         v-model="form.weight"
         type="number"
+        label-align="left"
+        input-align="right"
         :label="`${t('user.profile.weight')} (${t('user.profile.weightUnit')})`"
         :placeholder="t('user.profile.weightUnit')"
       />
@@ -189,6 +203,14 @@ loadPushed()
       <div class="field-block">
         <span class="field-label">{{ t('user.profile.sterilized') }}</span>
         <van-switch v-model="form.sterilized" size="22px" color="#ff6b00" />
+      </div>
+      <div class="field-block">
+        <span class="field-label">{{ t('user.profile.isPregnant') }}</span>
+        <van-switch v-model="form.isPregnant" size="22px" color="#ff6b00" />
+      </div>
+      <div class="field-block">
+        <span class="field-label">{{ t('user.profile.isLactating') }}</span>
+        <van-switch v-model="form.isLactating" size="22px" color="#ff6b00" />
       </div>
       <van-cell :title="t('user.profile.microchip')" :value="pet.microchip" />
       <van-cell :title="t('user.profile.createdAt')" :value="formatDate(pet.createdAt)" />

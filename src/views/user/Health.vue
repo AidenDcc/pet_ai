@@ -17,9 +17,11 @@ const router = useRouter()
 const { t, locale } = useI18n()
 
 const METRICS: { key: string; labelKey: string; unitKey: string; color: string; getValue: (s: HealthSummary) => number | string }[] = [
-  { key: 'temperature', labelKey: 'user.health.temperature', unitKey: 'user.health.degreeC', color: '#ff9f43', getValue: (s) => s.temperature.latest + '°' },
+  // { key: 'temperature', labelKey: 'user.health.temperature', unitKey: 'user.health.degreeC', color: '#ff9f43', getValue: (s) => s.temperature.latest + '°' },
+  { key: 'temperature', labelKey: 'user.health.temperature', unitKey: 'user.health.degreeC', color: '#ff9f43', getValue: (s) => s.temperature.latest},
   { key: 'heartRate', labelKey: 'user.health.heartRate', unitKey: 'user.health.bpm', color: '#ff6b6b', getValue: (s) => s.heartRate.latest },
-  { key: 'spo2', labelKey: 'user.health.spo2', unitKey: 'user.health.percent', color: '#00b4a6', getValue: (s) => s.spo2.latest + '%' },
+  // { key: 'spo2', labelKey: 'user.health.spo2', unitKey: 'user.health.percent', color: '#00b4a6', getValue: (s) => s.spo2.latest + '%' },
+  { key: 'spo2', labelKey: 'user.health.spo2', unitKey: 'user.health.percent', color: '#00b4a6', getValue: (s) => s.spo2.latest },
   { key: 'respiratoryRate', labelKey: 'user.health.respiratory', unitKey: 'user.health.bpm', color: '#5b8ff9', getValue: (s) => s.respiratoryRate.latest },
   { key: 'calorie', labelKey: 'user.health.calorie', unitKey: 'user.health.calorieUnit', color: '#34c759', getValue: (s) => s.calorie.latest },
 ]

@@ -78,29 +78,38 @@ function removeTag(i: number) {
           {{ t('user.petCare.vaccines') }}
         </span>
         <span class="care-count">{{ vaccines.length }}</span>
+        <van-button
+          size="mini"
+          round
+          plain
+          type="primary"
+          icon="plus"
+          class="care-add"
+          @click="addVaccine"
+        >
+          {{ t('user.petCare.addVaccine') }}
+        </van-button>
       </div>
       <div v-if="!vaccines.length" class="care-empty">{{ t('user.petCare.emptyVaccines') }}</div>
-      <div v-for="(rec, i) in vaccines" :key="rec.id" class="record-row">
-        <van-field
-          v-model="rec.name"
-          class="rec-name"
-          :placeholder="t('user.petCare.recordNamePlaceholder')"
-          :maxlength="30"
-        />
-        <van-field v-model="rec.date" type="date" class="rec-date" />
-        <van-icon name="delete-o" class="rec-del" @click="removeVaccine(i)" />
-      </div>
-      <van-button
-        size="small"
-        round
-        plain
-        type="primary"
-        icon="plus"
-        class="care-add"
-        @click="addVaccine"
-      >
-        {{ t('user.petCare.addVaccine') }}
-      </van-button>
+      <!-- 记录行左滑显示删除按钮 -->
+      <van-swipe-cell v-for="(rec, i) in vaccines" :key="rec.id">
+        <div class="record-row">
+          <van-field
+            v-model="rec.name"
+            class="rec-name"
+            :placeholder="t('user.petCare.recordNamePlaceholder')"
+            :maxlength="30"
+          />
+          <van-field v-model="rec.date" type="date" class="rec-date" />
+        </div>
+        <template #right>
+          <div class="rec-del">
+            <van-button square type="danger" class="rec-del-btn" @click="removeVaccine(i)">
+              {{ t('common.delete') }}
+            </van-button>
+          </div>
+        </template>
+      </van-swipe-cell>
     </section>
 
     <!-- 驱虫 -->
@@ -111,29 +120,38 @@ function removeTag(i: number) {
           {{ t('user.petCare.dewormings') }}
         </span>
         <span class="care-count">{{ dewormings.length }}</span>
+        <van-button
+          size="mini"
+          round
+          plain
+          type="primary"
+          icon="plus"
+          class="care-add"
+          @click="addDeworm"
+        >
+          {{ t('user.petCare.addDeworm') }}
+        </van-button>
       </div>
       <div v-if="!dewormings.length" class="care-empty">{{ t('user.petCare.emptyDewormings') }}</div>
-      <div v-for="(rec, i) in dewormings" :key="rec.id" class="record-row">
-        <van-field
-          v-model="rec.name"
-          class="rec-name"
-          :placeholder="t('user.petCare.recordNamePlaceholder')"
-          :maxlength="30"
-        />
-        <van-field v-model="rec.date" type="date" class="rec-date" />
-        <van-icon name="delete-o" class="rec-del" @click="removeDeworm(i)" />
-      </div>
-      <van-button
-        size="small"
-        round
-        plain
-        type="primary"
-        icon="plus"
-        class="care-add"
-        @click="addDeworm"
-      >
-        {{ t('user.petCare.addDeworm') }}
-      </van-button>
+      <!-- 记录行左滑显示删除按钮 -->
+      <van-swipe-cell v-for="(rec, i) in dewormings" :key="rec.id">
+        <div class="record-row">
+          <van-field
+            v-model="rec.name"
+            class="rec-name"
+            :placeholder="t('user.petCare.recordNamePlaceholder')"
+            :maxlength="30"
+          />
+          <van-field v-model="rec.date" type="date" class="rec-date" />
+        </div>
+        <template #right>
+          <div class="rec-del">
+            <van-button square type="danger" class="rec-del-btn" @click="removeDeworm(i)">
+              {{ t('common.delete') }}
+            </van-button>
+          </div>
+        </template>
+      </van-swipe-cell>
     </section>
 
     <!-- 性格标签 -->
@@ -200,7 +218,7 @@ function removeTag(i: number) {
   .care-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 8px;
     margin-bottom: 8px;
 
     .care-title {
@@ -229,7 +247,8 @@ function removeTag(i: number) {
   }
 
   .care-add {
-    margin-top: 8px;
+    margin-left: auto;
+    flex-shrink: 0;
   }
 }
 
@@ -259,10 +278,16 @@ function removeTag(i: number) {
   }
 
   .rec-del {
-    color: var(--sp-text-placeholder);
-    font-size: 18px;
-    flex-shrink: 0;
-    padding: 6px;
+    display: flex;
+    height: 100%;
+
+    .rec-del-btn {
+      width: 68px;
+      height: 100%;
+      border: none;
+      border-radius: 0;
+      font-size: 13px;
+    }
   }
 }
 

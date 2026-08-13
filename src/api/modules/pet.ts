@@ -28,7 +28,7 @@ export function updatePetApi(id: string, data: Partial<PetInfo>) {
 }
 
 export function createPetApi(
-  data: Omit<PetInfo, 'id' | 'createdAt' | 'ownerId' | 'deviceId' | 'microchip' | 'avatar'> & { avatar?: string },
+  data: Omit<PetInfo, 'id' | 'createdAt' | 'ownerId' | 'deviceId' | 'microchip' | 'avatar' | 'isPregnant' | 'isLactating'> & { avatar?: string },
 ) {
   return request.post<unknown, PetJoined>('/pet', data)
 }

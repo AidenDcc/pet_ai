@@ -22,6 +22,8 @@ import type {
   VetInfo,
 } from '@/types'
 import { pick, rand, randFloat, uid } from './helper'
+import bdAvatar from '@/asset/image/宠物头像-布丁.png'
+import xqAvatar from '@/asset/image/宠物头像-雪球.png'
 
 /** 数据库中的用户（含密码，仅 mock 使用） */
 export interface DbUser extends UserInfo {
@@ -220,6 +222,8 @@ function addPet(data: Partial<PetInfo>): PetInfo {
     ownerId: demoOwner.id,
     deviceId: null,
     sterilized: Math.random() > 0.4,
+    isPregnant: false,
+    isLactating: false,
     microchip: `${rand(900000000, 999999999)}${rand(100000000, 999999999)}`,
     createdAt: new Date(Date.now() - rand(10, 300) * 86400000).toISOString(),
     vaccines: [],
@@ -238,6 +242,7 @@ function addPet(data: Partial<PetInfo>): PetInfo {
 addPet({
   id: 'p1',
   name: '布丁',
+  avatar: bdAvatar,
   species: 'dog',
   breed: '柯基',
   gender: 'male',
@@ -259,6 +264,7 @@ addPet({
 addPet({
   id: 'p2',
   name: '雪球',
+  avatar: xqAvatar,
   species: 'cat',
   breed: '布偶猫',
   gender: 'female',
