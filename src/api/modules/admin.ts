@@ -1,5 +1,5 @@
 import request from '../request'
-import type { OrderItem, PageQuery, PageResult, SubscriptionPlan, UserInfo, VetInfo } from '@/types'
+import type { AccountProfile, OrderItem, PageQuery, PageResult, SubscriptionPlan, UserInfo, VetInfo } from '@/types'
 
 export interface OverviewData {
   stats: {
@@ -73,4 +73,9 @@ export function getAdminPlansApi() {
 
 export function updatePlanApi(id: string, patch: Partial<SubscriptionPlan>) {
   return request.put<unknown, SubscriptionPlan>(`/admin/plan/${id}`, patch)
+}
+
+/** 更新当前平台运营账号（可编辑：昵称 / 头像） */
+export function updateAdminProfileApi(data: { name?: string; avatar?: string }) {
+  return request.put<unknown, AccountProfile>('/admin/profile', data)
 }

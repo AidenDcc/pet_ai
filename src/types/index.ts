@@ -8,6 +8,8 @@ export interface UserInfo {
   phone: string
   /** 邮箱（注册账号可为手机号或邮箱，邮箱注册时非空） */
   email?: string
+  /** 注册账号（手机号 / 邮箱），登录/刷新会话时由服务端回填 */
+  account?: string
   avatar: string
   role: Role
   petIds: string[]

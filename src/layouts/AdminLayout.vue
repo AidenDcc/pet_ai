@@ -2,9 +2,13 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useI18nStore } from '@/stores/i18n'
-import { ROLE_LABEL } from '@/utils/consts'
+import { LOGIN_PATH, ROLE_LABEL } from '@/utils/consts'
+import { PRESET_AVATARS } from '@/utils/presetAvatars'
+import { updateAdminProfileApi } from '@/api/modules/admin'
+import { changePasswordApi } from '@/api/modules/auth'
 import type { AppLocale } from '@/locales'
 import type { Role } from '@/types'
 
@@ -107,11 +111,119 @@ const collapsed = ref(false)
 const roleLabel = computed(() => (auth.role ? t(ROLE_LABEL[auth.role as Role]) : ''))
 const pageTitle = computed(() => (route.meta.titleKey ? t(route.meta.titleKey as string) : ''))
 
+/** 新密码强度：与后端 mock 校验一致（含字母和数字，6~20 位） */
+const PWD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)[\S]{6,20}$/
+
+// ---- 修改头像 ----
+const avatarVisible = ref(false)
+const savingAvatar = ref(false)
+async function selectAvatar(src: string) {
+  if (savingAvatar.value) return
+  savingAvatar.value = true
+  try {
+    await updateAdminProfileApi({ avatar: src })
+    auth.setUser({ avatar: src })
+    avatarVisible.value = false
+    ElMessage.success(t('common.saveSuccess'))
+  } catch (e) {
+    ElMessage.error((e as Error).message || t('common.saveFailed'))
+  } finally {
+    savingAvatar.value = false
+  }
+}
+
+// ---- 修改昵称 ----
+const nicknameVisible = ref(false)
+const nickname = ref('')
+const savingNickname = ref(false)
+async function saveNickname() {
+  const name = nickname.value.trim()
+  if (!name) {
+    ElMessage.warning(t('user.account.namePlaceholder'))
+    return
+  }
+  if (savingNickname.value) return
+  savingNickname.value = true
+  try {
+    await updateAdminProfileApi({ name })
+    auth.setUser({ name })
+    nicknameVisible.value = false
+    ElMessage.success(t('common.saveSuccess'))
+  } catch (e) {
+    ElMessage.error((e as Error).message || t('common.saveFailed'))
+  } finally {
+    savingNickname.value = false
+  }
+}
+
+// ---- 修改密码 ----
+const passwordVisible = ref(false)
+const passwordFormRef = ref<FormInstance>()
+const savingPassword = ref(false)
+const pwdForm = ref({ oldPassword: '', newPassword: '', confirmPassword: '' })
+/** validator 运行时取 t()，保证切换语言后提示实时生效 */
+const passwordRules: FormRules = {
+  oldPassword: [
+    {
+      validator: (_r, _v, cb) =>
+        pwdForm.value.oldPassword ? cb() : cb(new Error(t('user.password.oldRequired'))),
+      trigger: 'blur',
+    },
+  ],
+  newPassword: [
+    {
+      validator: (_r, v, cb) => {
+        if (!v) return cb(new Error(t('user.password.newRequired')))
+        if (!PWD_REGEX.test(v)) return cb(new Error(t('user.password.formatRule')))
+        cb()
+      },
+      trigger: 'blur',
+    },
+  ],
+  confirmPassword: [
+    {
+      validator: (_r, v, cb) => {
+        if (!v) return cb(new Error(t('user.password.confirmRequired')))
+        if (v !== pwdForm.value.newPassword) return cb(new Error(t('user.password.mismatch')))
+        cb()
+      },
+      trigger: 'blur',
+    },
+  ],
+}
+async function doChangePassword() {
+  const valid = await passwordFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  savingPassword.value = true
+  try {
+    await changePasswordApi({
+      oldPassword: pwdForm.value.oldPassword,
+      newPassword: pwdForm.value.newPassword,
+    })
+    ElMessage.success(t('user.password.success'))
+    // 改密成功后要求重新登录
+    setTimeout(() => {
+      auth.logout()
+      router.replace(LOGIN_PATH.admin)
+    }, 800)
+  } catch (e) {
+    ElMessage.error((e as Error).message || t('common.opFailed'))
+  } finally {
+    savingPassword.value = false
+  }
+}
+
 function onCommand(command: string) {
-  if (command === 'switch') {
-    auth.logout()
-    router.push('/')
-  } else if (command === 'logout') {
+  if (command === 'avatar') {
+    avatarVisible.value = true
+  } else if (command === 'nickname') {
+    nickname.value = auth.user?.name ?? ''
+    nicknameVisible.value = true
+  } else if (command === 'password') {
+    pwdForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
+    passwordFormRef.value?.clearValidate()
+    passwordVisible.value = true
+  } else if (command === 'switch' || command === 'logout') {
     auth.logout()
     router.push('/')
   }
@@ -188,7 +300,7 @@ function onCommand(command: string) {
               </template>
             </el-dropdown>
             <el-tag size="small" type="primary" effect="light">{{ roleLabel }}</el-tag>
-            <el-dropdown @command="onCommand">
+            <el-dropdown trigger="click" @command="onCommand">
               <span class="user-chip">
                 <el-avatar :size="30" :src="auth.user?.avatar">
                   {{ auth.user?.name?.slice(0, 1) }}
@@ -197,9 +309,37 @@ function onCommand(command: string) {
                 <el-icon><arrow-down /></el-icon>
               </span>
               <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="switch">{{ t('common.switchRole') }}</el-dropdown-item>
-                  <el-dropdown-item command="logout" divided>{{ t('common.logout') }}</el-dropdown-item>
+                <el-dropdown-menu class="user-menu">
+                  <el-dropdown-item class="user-menu-card" disabled>
+                    <el-avatar :size="40" :src="auth.user?.avatar">
+                      {{ auth.user?.name?.slice(0, 1) }}
+                    </el-avatar>
+                    <div class="user-card-info">
+                      <div class="user-card-name">{{ auth.user?.name || '—' }}</div>
+                      <div class="user-card-row">
+                        <el-tag size="small" type="primary" effect="light">{{ roleLabel }}</el-tag>
+                      </div>
+                      <div class="user-card-row">
+                        <span class="user-card-label">{{ t('admin.userMenu.account') }}</span>
+                        <span class="user-card-account">{{ auth.user?.account || '—' }}</span>
+                      </div>
+                    </div>
+                  </el-dropdown-item>
+                  <el-dropdown-item command="avatar">
+                    <el-icon><Picture /></el-icon>{{ t('admin.userMenu.changeAvatar') }}
+                  </el-dropdown-item>
+                  <el-dropdown-item command="nickname">
+                    <el-icon><EditPen /></el-icon>{{ t('admin.userMenu.changeNickname') }}
+                  </el-dropdown-item>
+                  <el-dropdown-item command="password">
+                    <el-icon><Lock /></el-icon>{{ t('admin.userMenu.changePassword') }}
+                  </el-dropdown-item>
+                  <el-dropdown-item command="switch" divided>
+                    <el-icon><SwitchButton /></el-icon>{{ t('common.switchRole') }}
+                  </el-dropdown-item>
+                  <el-dropdown-item command="logout">
+                    <el-icon><Close /></el-icon>{{ t('common.logout') }}
+                  </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -210,6 +350,77 @@ function onCommand(command: string) {
         </el-main>
       </el-container>
     </el-container>
+
+    <!-- 修改头像：预设头像宫格，点击即保存 -->
+    <el-dialog v-model="avatarVisible" :title="t('admin.userMenu.changeAvatar')" width="360px">
+      <div class="avatar-grid">
+        <div
+          v-for="a in PRESET_AVATARS"
+          :key="a.id"
+          class="avatar-grid__item"
+          :class="{ 'is-active': auth.user?.avatar === a.src }"
+          @click="selectAvatar(a.src)"
+        >
+          <img :src="a.src" :alt="a.id" />
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="avatarVisible = false">{{ t('common.cancel') }}</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 修改昵称 -->
+    <el-dialog v-model="nicknameVisible" :title="t('admin.userMenu.changeNickname')" width="400px">
+      <el-input
+        v-model="nickname"
+        :placeholder="t('user.account.namePlaceholder')"
+        maxlength="20"
+        show-word-limit
+        @keyup.enter="saveNickname"
+      />
+      <template #footer>
+        <el-button @click="nicknameVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="savingNickname" @click="saveNickname">{{ t('common.save') }}</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 修改密码 -->
+    <el-dialog v-model="passwordVisible" :title="t('admin.userMenu.changePassword')" width="420px">
+      <el-form ref="passwordFormRef" :model="pwdForm" :rules="passwordRules" label-width="88px" @submit.prevent>
+        <el-form-item :label="t('user.password.oldPassword')" prop="oldPassword">
+          <el-input
+            v-model="pwdForm.oldPassword"
+            type="password"
+            show-password
+            maxlength="20"
+            :placeholder="t('user.password.oldPasswordPlaceholder')"
+          />
+        </el-form-item>
+        <el-form-item :label="t('user.password.newPassword')" prop="newPassword">
+          <el-input
+            v-model="pwdForm.newPassword"
+            type="password"
+            show-password
+            maxlength="20"
+            :placeholder="t('user.password.newPasswordPlaceholder')"
+          />
+        </el-form-item>
+        <el-form-item :label="t('user.password.confirmPassword')" prop="confirmPassword">
+          <el-input
+            v-model="pwdForm.confirmPassword"
+            type="password"
+            show-password
+            maxlength="20"
+            :placeholder="t('user.password.confirmPasswordPlaceholder')"
+          />
+        </el-form-item>
+      </el-form>
+      <div class="pwd-hint">{{ t('user.password.formatRule') }}</div>
+      <template #footer>
+        <el-button @click="passwordVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="savingPassword" @click="doChangePassword">{{ t('common.save') }}</el-button>
+      </template>
+    </el-dialog>
   </el-config-provider>
 </template>
 
@@ -383,5 +594,102 @@ function onCommand(command: string) {
   background: #f9fcf7;
   padding: 20px;
   overflow-y: auto;
+}
+
+/* ---- 修改头像宫格（对话框默认原地渲染，scoped 可命中） ---- */
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  justify-items: center;
+  padding: 4px 0;
+
+  &__item {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    padding: 3px;
+    cursor: pointer;
+
+    img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+    }
+
+    &.is-active {
+      outline: 3px solid #3c8a6c;
+    }
+  }
+}
+
+.pwd-hint {
+  font-size: 12px;
+  color: #a8b3ab;
+  line-height: 1.5;
+}
+</style>
+
+<style lang="scss">
+/* 用户下拉菜单 teleport 到 body，scoped 样式打不到，需非 scoped 全局样式 */
+.user-menu.el-dropdown-menu {
+  padding: 6px;
+  min-width: 230px;
+
+  .el-dropdown-menu__item {
+    border-radius: 6px;
+    .el-icon {
+      margin-right: 6px;
+    }
+  }
+
+  /* 顶部用户信息卡（禁用项去灰） */
+  .el-dropdown-menu__item.is-disabled.user-menu-card {
+    cursor: default;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    color: var(--el-text-color-primary);
+
+    &:hover {
+      background: transparent;
+    }
+  }
+
+  .user-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .user-card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #222;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .user-card-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .user-card-label {
+    color: #a8b3ab;
+  }
+
+  .user-card-account {
+    color: #555a52;
+  }
 }
 </style>

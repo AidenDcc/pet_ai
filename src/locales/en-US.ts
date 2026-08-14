@@ -59,7 +59,7 @@ export default {
     patientManage: 'Patients',
     aiAnalysis: 'AI Analysis',
     admin: {
-      dashboard: 'Dashboard',
+      dashboard: 'Workbench',
       bi: 'BI Reports',
       biMonitor: 'Ops Monitor',
       biDevice: 'Device Reports',
@@ -1117,7 +1117,7 @@ export default {
   },
   admin: {
     dashboard: {
-      title: 'Dashboard',
+      title: 'Workbench',
       welcome: 'Welcome back, {name} 👋',
       welcomeDesc: 'This is the ShuxinPet pet smart wearable platform console — have a great day.',
       accountPanel: 'Account',
@@ -1654,6 +1654,12 @@ export default {
       nameRequired: 'Please enter terminal name',
       codeRequired: 'Please enter terminal code',
       deleteConfirm: 'Delete terminal "{name}"?',
+    },
+    userMenu: {
+      changeAvatar: 'Change avatar',
+      changeNickname: 'Change nickname',
+      changePassword: 'Change password',
+      account: 'Account',
     },
   },
   assistant: {

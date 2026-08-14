@@ -71,13 +71,16 @@ defineMock([
       assertRole(user, role)
       if (user.status === 'disabled') throw new MockError('账号已被禁用', 1002)
       const token = issueToken(user)
-      return { token, user: publicUser(user) }
+      return { token, user: { ...publicUser(user), account: user.account } }
     },
   },
   {
     method: 'get',
     path: '/auth/me',
-    handler: (ctx) => publicUser(requireUser(ctx)),
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      return { ...publicUser(user), account: user.account }
+    },
   },
   {
     method: 'post',
@@ -121,7 +124,7 @@ defineMock([
       if (user.status === 'disabled') throw new MockError('账号已被禁用', 1002)
       codeStore.delete(contact)
       const token = issueToken(user)
-      return { token, user: publicUser(user) }
+      return { token, user: { ...publicUser(user), account: user.account } }
     },
   },
   {

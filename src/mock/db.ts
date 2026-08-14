@@ -1287,7 +1287,7 @@ const sysDay = 86400000
 
 // 菜单（镜像平台真实菜单结构，parentId 关联成树）
 const MENU_SEEDS: Array<Omit<SysMenu, 'children'>> = [
-  { id: 'm1', parentId: null, name: '数据看板', type: 'dir', icon: 'TrendCharts', path: '/admin/dashboard', perm: '', sort: 1, visible: true, status: 'active' },
+  { id: 'm1', parentId: null, name: '工作台', type: 'dir', icon: 'TrendCharts', path: '/admin/dashboard', perm: '', sort: 1, visible: true, status: 'active' },
   { id: 'm2', parentId: null, name: 'BI 报表', type: 'dir', icon: 'DataAnalysis', path: '/admin/bi', perm: '', sort: 2, visible: true, status: 'active' },
   { id: 'm24', parentId: 'm2', name: '运营监控', type: 'menu', icon: 'Odometer', path: '/admin/bi/monitor', perm: 'admin:bi:monitor:list', sort: 1, visible: true, status: 'active' },
   { id: 'm25', parentId: 'm2', name: '设备报表', type: 'menu', icon: 'Cpu', path: '/admin/bi/device', perm: 'admin:bi:device:list', sort: 2, visible: true, status: 'active' },

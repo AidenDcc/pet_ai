@@ -59,7 +59,7 @@ export default {
     patientManage: '患者管理',
     aiAnalysis: 'AI 智能分析',
     admin: {
-      dashboard: '数据看板',
+      dashboard: '工作台',
       bi: 'BI 报表',
       biMonitor: '运营监控',
       biDevice: '设备报表',
@@ -1117,7 +1117,7 @@ export default {
   },
   admin: {
     dashboard: {
-      title: '数据看板',
+      title: '工作台',
       welcome: '欢迎回来，{name} 👋',
       welcomeDesc: '这里是 ShuxinPet 宠物智能穿戴平台运营控制台，祝您今天工作顺利。',
       accountPanel: '账号信息',
@@ -1654,6 +1654,12 @@ export default {
       nameRequired: '请输入终端名称',
       codeRequired: '请输入终端标识',
       deleteConfirm: '确认删除终端「{name}」吗？',
+    },
+    userMenu: {
+      changeAvatar: '修改头像',
+      changeNickname: '修改昵称',
+      changePassword: '修改密码',
+      account: '账号',
     },
   },
   assistant: {

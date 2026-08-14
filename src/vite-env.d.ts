@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_AMAP_KEY: string
   /** 高德地图安全密钥 securityJsCode */
   readonly VITE_AMAP_JSCODE: string
+  /** GLM（智谱 AI）API Key，用于健康报告 AI 生成 */
+  readonly VITE_GLM_API_KEY: string
 }
 
 interface ImportMeta {

@@ -1,5 +1,5 @@
 import { defineMock, MockError, paginate, filterByKeyword, requireRole } from '../helper'
-import { users, pets, devices, vets, orders, plans, findUserById } from '../db'
+import { users, pets, devices, vets, orders, plans, findUserById, publicUser } from '../db'
 import type { SubscriptionPlan, UserInfo } from '@/types'
 
 function joinDeviceAdmin(device: (typeof devices)[number]) {
@@ -163,6 +163,22 @@ defineMock([
       const patch = (ctx.body ?? {}) as Partial<SubscriptionPlan>
       Object.assign(plan, patch)
       return plan
+    },
+  },
+  // 更新当前运营账号（仅昵称 / 头像可编辑，其余忽略）
+  {
+    method: 'put',
+    path: '/admin/profile',
+    handler: (ctx) => {
+      const user = requireRole(ctx, 'admin')
+      const patch = (ctx.body ?? {}) as Record<string, unknown>
+      const next: Partial<UserInfo> = {}
+      for (const key of ['name', 'avatar'] as const) {
+        const v = patch[key]
+        if (typeof v === 'string' && v.trim()) (next as Record<string, unknown>)[key] = v
+      }
+      Object.assign(user, next)
+      return { ...publicUser(user), account: user.account }
     },
   },
 ])
