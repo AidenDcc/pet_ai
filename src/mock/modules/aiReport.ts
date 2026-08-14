@@ -11,9 +11,9 @@ import type { AbnormalItem, PetInfo, ReportItem } from '@/types'
  * 调用 GLM-4.6V-Flash 生成结构化报告。AI 不可达时由本地规则引擎兜底。
  */
 
-const AI_API_URL = 'https://ai.idigitalheart.com:8088/v1/chat/completions'
-const AI_API_KEY = import.meta.env.VITE_GLM_API_KEY ?? ''
-const AI_MODEL = 'GLM-4.6V-Flash'
+const AI_API_URL = 'https://api.deepseek.com/v1/chat/completions'
+const AI_API_KEY = import.meta.env.VITE_DS_API_KEY ?? ''
+const AI_MODEL = 'deepseek-chat'
 const AI_TIMEOUT = 300000
 const DAY = 86400000
 
