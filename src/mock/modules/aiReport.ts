@@ -12,7 +12,7 @@ import type { AbnormalItem, PetInfo, ReportItem } from '@/types'
  */
 
 const AI_API_URL = 'https://api.deepseek.com/v1/chat/completions'
-const AI_API_KEY = 'sk-0e568cc869f94e59b23d2cae5e7371b2'
+const AI_API_KEY = ''
 const AI_MODEL = 'deepseek-v4-flash'
 const AI_TIMEOUT = 300000
 const DAY = 86400000
