@@ -4,7 +4,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { getReportApi, type ReportJoined } from '@/api/modules/report'
-import { SPECIES_ICON } from '@/utils/consts'
+import { getPetApi, type PetJoined } from '@/api/modules/pet'
+import { SPECIES_ICON, SPECIES_LABEL, GENDER_LABEL } from '@/utils/consts'
+import { ageOf } from '@/utils/format'
+import ReportTrendChart from '@/components/ReportTrendChart.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,12 +15,31 @@ const reportId = route.params.id as string
 const { t } = useI18n()
 
 const report = ref<ReportJoined | null>(null)
+const pet = ref<PetJoined | null>(null)
 const loading = ref(false)
+
+/** 五类趋势图配置（心率 / 呼吸率 / 血氧 / 体温 / 卡路里） */
+const TREND_METRICS = [
+  { key: 'heartRate', labelKey: 'user.health.heartRate', unitKey: 'user.health.bpm', color: '#ff6b6b' },
+  { key: 'respiratoryRate', labelKey: 'user.health.respiratory', unitKey: 'user.health.bpm', color: '#5b8ff9' },
+  { key: 'spo2', labelKey: 'user.health.spo2', unitKey: 'user.health.percent', color: '#00b4a6' },
+  { key: 'temperature', labelKey: 'user.health.temperature', unitKey: 'user.health.degreeC', color: '#ff9f43' },
+  { key: 'calorie', labelKey: 'user.health.calorie', unitKey: 'user.health.calorieUnit', color: '#34c759' },
+] as const
 
 async function load() {
   loading.value = true
   try {
     report.value = await getReportApi(reportId)
+    if (report.value.petId) {
+      getPetApi(report.value.petId)
+        .then((p) => {
+          pet.value = p
+        })
+        .catch(() => {
+          pet.value = null
+        })
+    }
   } catch (e) {
     ElMessage.error((e as Error).message || t('common.loadFailed'))
   } finally {
@@ -37,6 +59,13 @@ function reviewType(r: ReportJoined): 'success' | 'danger' | 'warning' | 'info' 
   if (r.doctorReview === 'rejected') return 'danger'
   if (r.doctorReview === 'pending') return 'warning'
   return 'info'
+}
+
+function gradeTag(grade: string): 'success' | 'primary' | 'warning' | 'danger' {
+  if (grade === 'A') return 'success'
+  if (grade === 'B') return 'primary'
+  if (grade === 'C') return 'warning'
+  return 'danger'
 }
 
 load()
@@ -71,7 +100,33 @@ load()
               <el-tag size="small" :type="report.abnormal.length ? 'warning' : 'success'">
                 {{ report.abnormal.length ? t('user.reports.abnormalCount', { n: report.abnormal.length }) : t('user.reports.normal') }}
               </el-tag>
+              <el-tag v-if="report.grade" size="small" :type="gradeTag(report.grade)">
+                {{ t('admin.petReports.grade') }} {{ report.grade }}
+              </el-tag>
+              <el-tag v-if="report.source" size="small" :type="report.source === 'offline' ? 'info' : 'success'">
+                {{ report.source === 'offline' ? t('admin.petReports.sourceOffline') : t('admin.petReports.sourceAi') }}
+              </el-tag>
               <el-tag size="small" :type="reviewType(report)">{{ reviewLabel(report) }}</el-tag>
+            </div>
+          </div>
+        </div>
+
+        <!-- 宠物基本信息 -->
+        <div class="block">
+          <div class="block-title">🐾 {{ t('admin.petReports.petInfo') }}</div>
+          <div class="pet-info-row">
+            <el-avatar :size="48" :src="pet?.avatar || report.petAvatar" />
+            <div class="pet-info-main">
+              <div class="pet-info-name">{{ SPECIES_ICON[report.species] }} {{ pet?.name || report.petName }}</div>
+              <div v-if="pet" class="pet-info-meta">
+                {{ t(SPECIES_LABEL[pet.species]) }} · {{ pet.breed }} · {{ t(GENDER_LABEL[pet.gender]) }} ·
+                {{ t('common.yearsOld', { n: ageOf(pet.birthDate) }) }} · {{ pet.weight }} {{ t('user.profile.weightUnit') }}
+              </div>
+            </div>
+            <div v-if="pet" class="pet-info-tags">
+              <el-tag v-if="pet.sterilized" size="small">{{ t('user.profile.sterilized') }}</el-tag>
+              <el-tag v-if="pet.isPregnant" size="small" type="warning">{{ t('user.profile.isPregnant') }}</el-tag>
+              <el-tag v-if="pet.isLactating" size="small" type="warning">{{ t('user.profile.isLactating') }}</el-tag>
             </div>
           </div>
         </div>
@@ -99,9 +154,9 @@ load()
           </div>
         </div>
 
-        <!-- 指标概览 -->
+        <!-- 周期体征数据 -->
         <div class="block">
-          <div class="block-title">📊 {{ t('user.reportDetail.overview') }}</div>
+          <div class="block-title">📊 {{ t('admin.petReports.vitalData') }}</div>
           <div class="metric-grid">
             <div class="metric-item">
               <div class="metric-value">{{ report.metricsSummary.heartRate.avg }}</div>
@@ -124,6 +179,53 @@ load()
               <div class="metric-range">{{ t('user.reportDetail.dailyActivity') }} {{ (report.metricsSummary.totalActivity / 7 / 1000).toFixed(1) }}{{ t('user.reportDetail.stepsUnit') }}</div>
             </div>
           </div>
+        </div>
+
+        <!-- 指标趋势（平滑折线图） -->
+        <div v-if="report.trend" class="block">
+          <div class="block-title">📈 {{ t('user.health.trendTitle') }}</div>
+          <div class="trend-grid">
+            <div v-for="m in TREND_METRICS" :key="m.key" class="trend-card">
+              <div class="trend-head">
+                <span class="trend-name">{{ t(m.labelKey) }}</span>
+                <span class="trend-unit">{{ t(m.unitKey) }}</span>
+              </div>
+              <ReportTrendChart :points="report.trend[m.key]" :unit="t(m.unitKey)" :color="m.color" height="200px" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 周期运动数据 -->
+        <div v-if="report.exerciseSummary" class="block">
+          <div class="block-title">🏃 {{ t('admin.petReports.exerciseData') }}</div>
+          <div class="metric-grid">
+            <div class="metric-item exercise">
+              <div class="metric-value">{{ report.exerciseSummary.stepFreq }}</div>
+              <div class="metric-label">{{ t('admin.petReports.stepFreq') }} ({{ t('user.health.stepFreqUnit') }})</div>
+              <div class="metric-range">{{ t('admin.petReports.dailyAvg') }}</div>
+            </div>
+            <div class="metric-item exercise">
+              <div class="metric-value">{{ report.exerciseSummary.stride }}</div>
+              <div class="metric-label">{{ t('admin.petReports.stride') }} ({{ t('user.health.strideUnit') }})</div>
+              <div class="metric-range">{{ t('admin.petReports.dailyAvg') }}</div>
+            </div>
+            <div class="metric-item exercise">
+              <div class="metric-value">{{ report.exerciseSummary.speed }}</div>
+              <div class="metric-label">{{ t('admin.petReports.speed') }} ({{ t('user.health.speedUnit') }})</div>
+              <div class="metric-range">{{ t('admin.petReports.dailyAvg') }}</div>
+            </div>
+            <div class="metric-item exercise">
+              <div class="metric-value">{{ report.exerciseSummary.dailyActivity }}</div>
+              <div class="metric-label">{{ t('admin.petReports.dailyActivity') }}</div>
+              <div class="metric-range">{{ t('admin.petReports.totalActivity') }} {{ report.exerciseSummary.totalActivity }} / {{ t('admin.petReports.exerciseDurationMin') }} {{ report.exerciseSummary.exerciseDurationMin }} min</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 报告结论（AI 全文） -->
+        <div v-if="report.reportDetail" class="block">
+          <div class="block-title">📄 {{ t('admin.petReports.reportConclusion') }}</div>
+          <div class="md-text">{{ report.reportDetail }}</div>
         </div>
 
         <!-- 医生审阅 -->
@@ -204,9 +306,39 @@ load()
     }
     .tags {
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
       margin-top: 10px;
     }
+  }
+}
+
+.pet-info-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: #f2fbf6;
+  border-radius: 10px;
+
+  .pet-info-main {
+    flex: 1;
+    min-width: 0;
+  }
+  .pet-info-name {
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .pet-info-meta {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--sp-text-secondary);
+  }
+  .pet-info-tags {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-end;
   }
 }
 
@@ -228,6 +360,18 @@ load()
   background: var(--el-color-primary-light-9);
   border-radius: 10px;
   padding: 12px;
+}
+
+.md-text {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--sp-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #f8faf9;
+  border-radius: 10px;
+  padding: 14px;
+  border: 1px solid var(--sp-border);
 }
 
 .abnormal-item {
@@ -266,6 +410,10 @@ load()
     border-radius: 10px;
     padding: 12px;
 
+    &.exercise {
+      background: #f5f3fb;
+    }
+
     .metric-value {
       font-size: 20px;
       font-weight: 800;
@@ -280,6 +428,34 @@ load()
       margin-top: 4px;
       font-size: 11px;
       color: var(--sp-text-placeholder);
+    }
+  }
+}
+
+.trend-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+
+  .trend-card {
+    border: 1px solid var(--sp-border);
+    border-radius: 10px;
+    padding: 12px 12px 8px;
+
+    .trend-head {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 2px;
+
+      .trend-name {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .trend-unit {
+        font-size: 12px;
+        color: var(--sp-text-placeholder);
+      }
     }
   }
 }

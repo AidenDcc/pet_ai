@@ -1,9 +1,41 @@
 import { defineMock, MockError, requireUser, requireRole, uid } from '../helper'
-import { reports, findPetById, findVetByUserId, vets } from '../db'
-import type { ReportItem } from '@/types'
+import { reports, findPetById, findUserById, findVetByUserId, vets, dailyAgg, health } from '../db'
+import type { ReportItem, ReportTrend } from '@/types'
+
+/** 卡路里换算：每步消耗约 0.05 千卡（与健康模块口径一致） */
+const CAL_PER_STEP = 0.05
+const calorieOf = (steps: number) => Math.round(steps * CAL_PER_STEP)
+
+/**
+ * 根据报告周期生成趋势点位：
+ * 单日（≤1.5 天）取逐小时健康数据；周/月取日汇总数据
+ */
+export function buildTrend(report: ReportItem): ReportTrend {
+  const dayMs = 86400000
+  const spanDays = (report.endAt - report.startAt) / dayMs
+  if (spanDays <= 1.5) {
+    const hourly = (health[report.petId] ?? []).filter((m) => m.ts >= report.startAt && m.ts <= report.endAt)
+    return {
+      heartRate: hourly.map((m) => ({ ts: m.ts, value: m.heartRate })),
+      respiratoryRate: hourly.map((m) => ({ ts: m.ts, value: m.respiratoryRate })),
+      spo2: hourly.map((m) => ({ ts: m.ts, value: m.spo2 })),
+      temperature: hourly.map((m) => ({ ts: m.ts, value: m.temperature })),
+      calorie: hourly.map((m) => ({ ts: m.ts, value: calorieOf(m.activity) })),
+    }
+  }
+  const days = (dailyAgg[report.petId] ?? []).filter((d) => d.ts >= report.startAt && d.ts <= report.endAt)
+  return {
+    heartRate: days.map((d) => ({ ts: d.ts, value: d.heartRate.avg })),
+    respiratoryRate: days.map((d) => ({ ts: d.ts, value: d.respiratoryRate.avg })),
+    spo2: days.map((d) => ({ ts: d.ts, value: d.spo2.avg })),
+    temperature: days.map((d) => ({ ts: d.ts, value: d.temperature.avg })),
+    calorie: days.map((d) => ({ ts: d.ts, value: calorieOf(d.steps) })),
+  }
+}
 
 function joinReport(report: ReportItem) {
   const pet = findPetById(report.petId)
+  const owner = pet ? findUserById(pet.ownerId) : null
   const doctor = report.doctorId ? vets.find((v) => v.id === report.doctorId) : null
   return {
     ...report,
@@ -11,6 +43,10 @@ function joinReport(report: ReportItem) {
     petAvatar: pet?.avatar ?? '',
     species: pet?.species ?? 'dog',
     doctorName: doctor?.name ?? null,
+    ownerId: pet?.ownerId ?? '',
+    ownerName: owner?.name ?? '',
+    ownerAvatar: owner?.avatar ?? '',
+    trend: buildTrend(report),
   }
 }
 

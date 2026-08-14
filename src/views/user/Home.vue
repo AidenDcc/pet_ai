@@ -8,12 +8,9 @@ import { SPECIES_ICON } from '@/utils/consts'
 import { ageOf } from '@/utils/format'
 import petAvatar from '@/asset/image/宠物头像.png'
 import { petAvatarSrc } from '@/utils/petAvatar'
-import { useI18nStore } from '@/stores/i18n'
-import type { AppLocale } from '@/locales'
 
 const router = useRouter()
 const { t } = useI18n()
-const i18nStore = useI18nStore()
 
 const pets = ref<PetJoined[]>([])
 const activeIndex = ref(0)
@@ -51,27 +48,12 @@ function goPetDetail() {
   router.push(`/user/pet/${pet.id}`)
 }
 
-/** 顶部汉堡菜单：语言切换 / 宠物管理 */
+/** 顶部汉堡菜单：宠物管理（语言切换已收拢到「设置→系统语言」） */
 const showMenu = ref(false)
-const showLang = ref(false)
-const menuActions = computed(() => [
-  { key: 'lang', name: t('common.language') },
-  { key: 'pets', name: t('user.petList.title') },
-])
+const menuActions = computed(() => [{ key: 'pets', name: t('user.petList.title') }])
 function onMenuSelect(action: { key?: string } | undefined) {
   showMenu.value = false
-  if (!action) return
-  if (action.key === 'lang') showLang.value = true
-  else if (action.key === 'pets') router.push('/user/pets')
-}
-
-const langOptions = computed(() => [
-  { name: t('admin.i18n.zh'), value: 'zh-CN' },
-  { name: t('admin.i18n.en'), value: 'en-US' },
-])
-function onLangSelect(action: { value: AppLocale } | undefined) {
-  if (action) i18nStore.applyLocale(action.value)
-  showLang.value = false
+  if (action?.key === 'pets') router.push('/user/pets')
 }
 </script>
 
@@ -277,19 +259,12 @@ function onLangSelect(action: { value: AppLocale } | undefined) {
       </template>
     </template>
 
-    <!-- 汉堡菜单 / 语言切换 -->
+    <!-- 汉堡菜单 -->
     <van-action-sheet
       v-model:show="showMenu"
       :actions="menuActions"
       :cancel-text="t('common.cancel')"
       @select="onMenuSelect"
-    />
-    <van-action-sheet
-      v-model:show="showLang"
-      :title="t('common.language')"
-      :cancel-text="t('common.cancel')"
-      :actions="langOptions"
-      @select="onLangSelect"
     />
   </div>
 </template>

@@ -33,3 +33,8 @@ export function registerApi(data: { account: string; password: string; code: str
 export function resetPasswordApi(data: { account: string; newPassword: string; code: string }) {
   return request.post<unknown, { ok: boolean }>('/auth/reset-password', data)
 }
+
+/** 修改密码（登录后，需原密码校验） */
+export function changePasswordApi(data: { oldPassword: string; newPassword: string }) {
+  return request.post<unknown, { ok: boolean }>('/auth/change-password', data)
+}

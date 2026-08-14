@@ -5,13 +5,21 @@ import type { DeviceInfo, PetInfo } from '@/types'
 
 export interface PetJoined extends PetInfo {
   ownerName: string
+  ownerAccount: string
+  ownerAvatar: string
   device: DeviceInfo | null
 }
 
 function joinPet(pet: PetInfo): PetJoined {
   const device = devices.find((d) => d.boundPetId === pet.id) ?? null
   const owner = findUserById(pet.ownerId)
-  return { ...pet, ownerName: owner?.name ?? '未知', device }
+  return {
+    ...pet,
+    ownerName: owner?.name ?? '未知',
+    ownerAccount: owner?.account ?? '',
+    ownerAvatar: owner?.avatar ?? '',
+    device,
+  }
 }
 
 defineMock([

@@ -122,41 +122,60 @@ onMounted(load)
       </div>
     </el-card>
 
-    <el-dialog v-model="detailVisible" :title="t('admin.common.viewDetail')" width="560px" destroy-on-close>
-      <el-descriptions v-if="detailRow" :column="2" border>
-        <el-descriptions-item :label="t('admin.vets.detail.id')">
-          {{ detailRow.id }}
-        </el-descriptions-item>
-        <el-descriptions-item :label="t('role.doctor')">
-          <div class="flex gap-8">
-            <el-avatar :src="detailRow.avatar" :size="28" />
-            <div>
-              <div class="fw-600">{{ detailRow.name }}</div>
-              <div class="text-secondary fs-12">{{ detailRow.title }}</div>
+    <el-dialog v-model="detailVisible" :title="t('admin.common.viewDetail')" width="680px" destroy-on-close>
+      <div v-if="detailRow" class="vet-detail">
+        <!-- 头部：头像 + 基础信息 + 认证状态 -->
+        <div class="vet-head">
+          <el-avatar :src="detailRow.avatar" :size="64" class="vet-head-avatar" />
+          <div class="vet-head-info">
+            <div class="vet-head-name">
+              {{ detailRow.name }}
+              <el-tag size="small" :type="CERT_STATUS[detailRow.certStatus].tag">
+                {{ t(CERT_STATUS[detailRow.certStatus].labelKey) }}
+              </el-tag>
             </div>
+            <div class="vet-head-sub">
+              {{ detailRow.title }} · {{ detailRow.department }} · {{ detailRow.hospital }}
+            </div>
+            <div class="vet-head-sub">{{ detailRow.phone }}</div>
           </div>
-        </el-descriptions-item>
-        <el-descriptions-item :label="t('admin.common.hospital')">
-          {{ detailRow.hospital }}
-        </el-descriptions-item>
-        <el-descriptions-item :label="t('admin.common.specialty')">
-          {{ detailRow.specialty || '-' }}
-        </el-descriptions-item>
-        <el-descriptions-item :label="t('admin.common.phone')">
-          {{ detailRow.phone }}
-        </el-descriptions-item>
-        <el-descriptions-item :label="t('admin.common.certStatus')">
-          <el-tag size="small" :type="CERT_STATUS[detailRow.certStatus].tag">
-            {{ t(CERT_STATUS[detailRow.certStatus].labelKey) }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item :label="t('admin.common.petCount')">
-          {{ detailRow.petIds.length }}
-        </el-descriptions-item>
-        <el-descriptions-item :label="t('admin.common.title')">
-          {{ detailRow.title || '-' }}
-        </el-descriptions-item>
-      </el-descriptions>
+        </div>
+
+        <!-- 统计指标：好评 / 接诊数 / 平均等待时间 -->
+        <div class="vet-stats">
+          <div class="vet-stat">
+            <div class="vet-stat-num">
+              {{ detailRow.rating }}<span class="vet-stat-unit">%</span>
+            </div>
+            <div class="vet-stat-label">{{ t('admin.vets.detail.rating') }}</div>
+          </div>
+          <div class="vet-stat">
+            <div class="vet-stat-num">{{ detailRow.consultCount }}</div>
+            <div class="vet-stat-label">{{ t('admin.vets.detail.consultCount') }}</div>
+          </div>
+          <div class="vet-stat">
+            <div class="vet-stat-num">
+              {{ detailRow.avgWaitTime }}<span class="vet-stat-unit">{{ t('admin.vets.detail.unitMin') }}</span>
+            </div>
+            <div class="vet-stat-label">{{ t('admin.vets.detail.avgWaitTime') }}</div>
+          </div>
+        </div>
+
+        <el-descriptions :column="1" border>
+          <el-descriptions-item :label="t('admin.vets.detail.department')">
+            {{ detailRow.department || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item :label="t('admin.vets.detail.specialty')">
+            {{ detailRow.specialty || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item :label="t('admin.vets.detail.bio')">
+            {{ detailRow.bio || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item :label="t('admin.vets.detail.realNameAuth')">
+            {{ detailRow.certNo || '-' }}
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -171,5 +190,63 @@ onMounted(load)
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+/* 医生详情 */
+.vet-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.vet-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.vet-head-avatar {
+  flex-shrink: 0;
+  background: var(--el-color-primary-light-8);
+}
+.vet-head-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.vet-head-sub {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.7;
+}
+.vet-stats {
+  display: flex;
+  background: var(--el-fill-color-lighter);
+  border-radius: 8px;
+  padding: 14px 0;
+}
+.vet-stat {
+  flex: 1;
+  text-align: center;
+}
+.vet-stat + .vet-stat {
+  border-left: 1px solid var(--el-border-color-lighter);
+}
+.vet-stat-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--el-color-primary);
+}
+.vet-stat-unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+  margin-left: 2px;
+}
+.vet-stat-label {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-top: 4px;
 }
 </style>

@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useLoginForm } from '@/composables/useLoginForm'
 import PhoneShell from '@/components/PhoneShell.vue'
 
-const router = useRouter()
 const { t } = useI18n()
 
 const form = useLoginForm({
@@ -34,9 +32,10 @@ const { account, password, showPwd, pwdType, loading, demoAccounts, submitPwd, f
         v-model="account"
         class="field"
         label-position="top"
-        :label="t('login.email')"
-        :placeholder="t('login.emailPlaceholder')"
-        left-icon="envelop-o"
+        label-align="left"
+        :label="t('login.account')"
+        :placeholder="t('login.doctor.accountPlaceholder')"
+        left-icon="contact"
         clearable
         @keyup.enter="submitPwd"
       />
@@ -44,6 +43,7 @@ const { account, password, showPwd, pwdType, loading, demoAccounts, submitPwd, f
         v-model="password"
         class="field"
         label-position="top"
+        label-align="left"
         :label="t('login.password')"
         :type="pwdType"
         :placeholder="t('login.passwordPlaceholder')"
@@ -59,14 +59,8 @@ const { account, password, showPwd, pwdType, loading, demoAccounts, submitPwd, f
         {{ t('login.loginBtn') }}
       </van-button>
 
-      <!-- 辅助链接 -->
-      <div class="links">
-        <router-link to="/doctor/forgot" class="link">{{ t('login.doctor.forgot') }}</router-link>
-        <span class="link">
-          {{ t('login.doctor.needAccount') }}
-          <span class="link-strong" @click="router.push('/doctor/register')">{{ t('login.doctor.contactUs') }}</span>
-        </span>
-      </div>
+      <!-- 辅助提示 -->
+      <p class="admin-hint">{{ t('login.doctor.adminContact') }}</p>
 
       <!-- 演示账号（仅医生） -->
       <template v-if="demoAccounts.length">
@@ -180,21 +174,11 @@ const { account, password, showPwd, pwdType, loading, demoAccounts, submitPwd, f
   letter-spacing: 2px;
 }
 
-.links {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.admin-hint {
   margin-top: 18px;
+  text-align: center;
   font-size: 13px;
   color: var(--sp-text-secondary);
-  .link {
-    cursor: pointer;
-    .link-strong {
-      margin-left: 2px;
-      color: var(--sp-primary);
-      font-weight: 600;
-    }
-  }
 }
 
 .demo-divider {

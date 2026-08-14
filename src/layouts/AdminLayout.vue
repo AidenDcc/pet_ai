@@ -25,13 +25,30 @@ const MENUS: Record<string, AdminMenuGroup[]> = {
       titleKey: 'nav.admin.groupWorkbench',
       nodes: [
         { path: '/admin/dashboard', titleKey: 'nav.admin.dashboard', icon: 'TrendCharts' },
-        { path: '/admin/bi', titleKey: 'nav.admin.bi', icon: 'DataAnalysis' },
+        {
+          titleKey: 'nav.admin.bi',
+          icon: 'DataAnalysis',
+          children: [
+            { path: '/admin/bi/monitor', titleKey: 'nav.admin.biMonitor', icon: 'Odometer' },
+            { path: '/admin/bi/device', titleKey: 'nav.admin.biDevice', icon: 'Cpu' },
+            { path: '/admin/bi/pet', titleKey: 'nav.admin.biPet', icon: 'Coin' },
+            { path: '/admin/bi/hospital', titleKey: 'nav.admin.biHospital', icon: 'FirstAidKit' },
+          ],
+        },
       ],
     },
     {
       titleKey: 'nav.admin.groupBiz',
       nodes: [
-        { path: '/admin/devices', titleKey: 'nav.admin.devices', icon: 'Monitor' },
+        {
+          titleKey: 'nav.admin.devices',
+          icon: 'Monitor',
+          children: [
+            { path: '/admin/devices/archive', titleKey: 'nav.admin.deviceArchive', icon: 'Files' },
+            { path: '/admin/devices/firmware', titleKey: 'nav.admin.deviceFirmware', icon: 'Upload' },
+            { path: '/admin/devices/active', titleKey: 'nav.admin.deviceActive', icon: 'Cpu' },
+          ],
+        },
         { path: '/admin/users', titleKey: 'nav.admin.users', icon: 'User' },
         {
           titleKey: 'nav.admin.pets',

@@ -5,9 +5,23 @@
  */
 const TOKEN_KEY = 'sp_token'
 const ROLE_KEY = 'sp_role'
+/** 登录方式：密码 / 验证码（决定设置里是否显示「修改密码」） */
+const LOGIN_MODE_KEY = 'sp_login_mode'
+
+export type LoginMode = 'pwd' | 'code'
 
 function storageOf(persist: boolean): Storage {
   return persist ? localStorage : sessionStorage
+}
+
+export function getLoginMode(): LoginMode | '' {
+  return (localStorage.getItem(LOGIN_MODE_KEY) || sessionStorage.getItem(LOGIN_MODE_KEY) || '') as LoginMode | ''
+}
+
+export function setLoginMode(mode: LoginMode, persist: boolean): void {
+  localStorage.removeItem(LOGIN_MODE_KEY)
+  sessionStorage.removeItem(LOGIN_MODE_KEY)
+  storageOf(persist).setItem(LOGIN_MODE_KEY, mode)
 }
 
 export function getToken(): string {
@@ -34,6 +48,8 @@ export function setRole(role: string, persist: boolean): void {
 export function clearSession(): void {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(ROLE_KEY)
+  localStorage.removeItem(LOGIN_MODE_KEY)
   sessionStorage.removeItem(TOKEN_KEY)
   sessionStorage.removeItem(ROLE_KEY)
+  sessionStorage.removeItem(LOGIN_MODE_KEY)
 }

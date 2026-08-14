@@ -3,6 +3,8 @@ import type { PageQuery, PageResult, PetInfo, UserInfo, DeviceInfo } from '@/typ
 
 export interface PetJoined extends PetInfo {
   ownerName: string
+  ownerAccount: string
+  ownerAvatar: string
   device: DeviceInfo | null
 }
 

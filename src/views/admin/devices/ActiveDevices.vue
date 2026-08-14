@@ -52,7 +52,7 @@ onMounted(load)
 <template>
   <div class="page-container">
     <div class="page-header">
-      <div class="page-title">{{ t('nav.admin.devices') }}</div>
+      <div class="page-title">{{ t('nav.admin.deviceActive') }}</div>
       <div class="page-desc">{{ t('admin.devices.desc') }}</div>
     </div>
 

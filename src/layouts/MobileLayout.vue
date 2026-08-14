@@ -78,7 +78,8 @@ function onTabChange(name: string | number) {
       <template #left>
         <van-icon v-if="!showTabbar" name="arrow-left" size="18" @click="router.back()" />
       </template>
-      <template #right>
+      <!-- 语言切换角标：宠物主端已收拢到「设置→系统语言」，仅医生端保留 -->
+      <template v-if="auth.role !== 'user'" #right>
         <span class="lang-toggle" @click="showLangSheet = true">{{ langLabel }}</span>
       </template>
     </van-nav-bar>
@@ -109,6 +110,7 @@ function onTabChange(name: string | number) {
 
 
   <van-action-sheet
+    v-if="auth.role !== 'user'"
     v-model:show="showLangSheet"
     :title="t('common.language')"
     :cancel-text="t('common.cancel')"

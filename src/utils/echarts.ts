@@ -26,6 +26,10 @@ import type {
   TitleComponentOption,
   RadarComponentOption,
 } from 'echarts/components'
+// 中国省区地图（仅类型；MapChart / VisualMap 运行时在 ChinaMapChart 组件内按需注册，
+// 避免把地图代码打进移动端包体）
+import type { MapSeriesOption } from 'echarts/charts'
+import type { VisualMapComponentOption } from 'echarts/components'
 
 echarts.use([
   LineChart,
@@ -50,11 +54,13 @@ export type ECOption = ComposeOption<
   | PieSeriesOption
   | GaugeSeriesOption
   | RadarSeriesOption
+  | MapSeriesOption
   | RadarComponentOption
   | GridComponentOption
   | TooltipComponentOption
   | LegendComponentOption
   | TitleComponentOption
+  | VisualMapComponentOption
 >
 
 export default echarts

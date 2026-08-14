@@ -1,4 +1,4 @@
-import type { Role } from '@/types'
+import type { CommMethod, HealthMetricType, Role } from '@/types'
 
 /** 角色名（i18n key） */
 export const ROLE_LABEL: Record<Role, string> = {
@@ -78,6 +78,36 @@ export const CERT_STATUS: Record<string, LabeledTag> = {
   rejected: { labelKey: 'status.rejected', tag: 'danger' },
 }
 
+/** 设备通讯方式（i18n key） */
+export const COMM_METHODS: Record<CommMethod, LabeledTag> = {
+  '4g': { labelKey: 'admin.deviceArchive.comm4g', tag: 'primary' },
+  ble: { labelKey: 'admin.deviceArchive.commBle', tag: 'primary' },
+  wifi: { labelKey: 'admin.deviceArchive.commWifi', tag: 'primary' },
+}
+
+/** 健康指标（i18n key，供"设备支持指标"多选与标签展示） */
+export const HEALTH_METRICS: Record<HealthMetricType, LabeledTag> = {
+  heartRate: { labelKey: 'user.health.heartRate', tag: 'primary' },
+  respiratoryRate: { labelKey: 'user.health.respiratory', tag: 'primary' },
+  spo2: { labelKey: 'user.health.spo2', tag: 'primary' },
+  temperature: { labelKey: 'user.health.temperature', tag: 'primary' },
+  activity: { labelKey: 'user.health.activity', tag: 'primary' },
+  sleep: { labelKey: 'user.health.sleep', tag: 'primary' },
+  calorie: { labelKey: 'user.health.calorie', tag: 'primary' },
+}
+
+/** 设备主档案状态（生效 / 失效） */
+export const DEVICE_ARCHIVE_STATUS: Record<string, LabeledTag> = {
+  active: { labelKey: 'admin.deviceArchive.statusActive', tag: 'success' },
+  inactive: { labelKey: 'admin.deviceArchive.statusInactive', tag: 'info' },
+}
+
+/** 固件包发布状态 */
+export const FIRMWARE_STATUS: Record<string, LabeledTag> = {
+  published: { labelKey: 'admin.firmware.statusPublished', tag: 'success' },
+  unpublished: { labelKey: 'admin.firmware.statusUnpublished', tag: 'info' },
+}
+
 /** 验证码登录 / 注册 / 找回密码：国际区号列表 */
 export interface AreaCode {
   code: string
@@ -139,4 +169,31 @@ export const DEMO_ACCOUNTS: {
     descKey: 'login.demo.admin',
     emoji: '📊',
   },
+]
+
+/** 应用版本号（展示为 v0.1.0；与 package.json version 保持一致） */
+export const APP_VERSION = '0.1.0'
+
+/** 账号信息 - 地区选择（双语，样式同 AREA_CODES） */
+export interface UserRegion {
+  name: string
+  nameEn: string
+}
+
+export const USER_REGIONS: UserRegion[] = [
+  { name: '北京', nameEn: 'Beijing' },
+  { name: '上海', nameEn: 'Shanghai' },
+  { name: '广东', nameEn: 'Guangdong' },
+  { name: '浙江', nameEn: 'Zhejiang' },
+  { name: '江苏', nameEn: 'Jiangsu' },
+  { name: '四川', nameEn: 'Sichuan' },
+  { name: '湖南', nameEn: 'Hunan' },
+  { name: '湖北', nameEn: 'Hubei' },
+  { name: '福建', nameEn: 'Fujian' },
+  { name: '山东', nameEn: 'Shandong' },
+  { name: '河南', nameEn: 'Henan' },
+  { name: '陕西', nameEn: 'Shaanxi' },
+  { name: '重庆', nameEn: 'Chongqing' },
+  { name: '香港', nameEn: 'Hong Kong, China' },
+  { name: '海外', nameEn: 'Overseas' },
 ]

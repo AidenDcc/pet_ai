@@ -202,8 +202,13 @@ loadPets()
           <el-option v-for="p in pets" :key="p.id" :value="p.id" :label="p.name">
             <div class="pet-option">
               <el-avatar :size="22" :src="p.avatar" />
-              <span>{{ SPECIES_ICON[p.species] }} {{ p.name }}</span>
-              <span class="pet-option-sub">{{ p.breed }}</span>
+              <div class="pet-option-main">
+                <div class="pet-option-name">
+                  {{ SPECIES_ICON[p.species] }} {{ p.name }}
+                  <span class="pet-option-sub">{{ p.breed }}</span>
+                </div>
+                <div class="pet-option-owner">{{ p.ownerName }} · {{ p.ownerId }}</div>
+              </div>
             </div>
           </el-option>
         </el-select>
@@ -218,6 +223,11 @@ loadPets()
             {{ t(GENDER_LABEL[selectedPet.gender]) }} ·
             {{ t('common.yearsOld', { n: ageOf(selectedPet.birthDate) }) }} ·
             {{ selectedPet.weight }} {{ t('user.profile.weightUnit') }}
+          </div>
+          <div class="pet-owner-row">
+            <el-avatar :size="20" :src="selectedPet.ownerAvatar">{{ selectedPet.ownerName?.slice(0, 1) }}</el-avatar>
+            <span class="pet-owner-name">{{ selectedPet.ownerName }}</span>
+            <span class="pet-owner-account">{{ t('admin.common.account') }}：{{ selectedPet.ownerAccount }}</span>
           </div>
         </div>
         <el-tag v-if="device" size="small" :type="DEVICE_STATUS[device.status].tag">
@@ -346,10 +356,24 @@ loadPets()
   display: flex;
   align-items: center;
   gap: 8px;
-  .pet-option-sub {
-    color: var(--sp-text-placeholder);
-    font-size: 12px;
-    margin-left: auto;
+
+  .pet-option-main {
+    min-width: 0;
+
+    .pet-option-name {
+      font-size: 13px;
+
+      .pet-option-sub {
+        color: var(--sp-text-placeholder);
+        font-size: 12px;
+        margin-left: 8px;
+      }
+    }
+    .pet-option-owner {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--sp-text-placeholder);
+    }
   }
 }
 
@@ -374,6 +398,27 @@ loadPets()
     margin-top: 4px;
     font-size: 12px;
     color: var(--sp-text-secondary);
+  }
+
+  .pet-owner-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--sp-text-secondary);
+
+    .pet-owner-name {
+      font-weight: 600;
+      color: var(--sp-text);
+    }
+    .pet-owner-account {
+      color: var(--sp-text-placeholder);
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 }
 

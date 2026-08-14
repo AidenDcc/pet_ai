@@ -2,13 +2,15 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { loginApi, loginByCodeApi, logoutApi, getMeApi } from '@/api/modules/auth'
 import { HOME_PATH } from '@/utils/consts'
-import { getToken, getRole, setToken, setRole, clearSession } from '@/utils/session'
+import { getToken, getRole, setToken, setRole, clearSession, getLoginMode, setLoginMode, type LoginMode } from '@/utils/session'
 import type { Role, UserInfo } from '@/types'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(getToken())
   const role = ref((getRole() || '') as Role | '')
   const user = ref<UserInfo | null>(null)
+  /** 当前会话登录方式：pwd / code（决定设置里是否显示「修改密码」） */
+  const loginMode = ref<LoginMode | ''>(getLoginMode())
 
   /**
    * 密码登录。
@@ -22,7 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
     remember = true,
   ): Promise<UserInfo> {
     const res = await loginApi({ account, password, role })
-    return persistSession(res.token, res.user, role, remember)
+    return persistSession(res.token, res.user, role, remember, 'pwd')
   }
 
   /** 验证码登录（手机号 / 邮箱 + 验证码） */
@@ -33,17 +35,18 @@ export const useAuthStore = defineStore('auth', () => {
     remember = true,
   ): Promise<UserInfo> {
     const res = await loginByCodeApi({ account, code, role })
-    return persistSession(res.token, res.user, role, remember)
+    return persistSession(res.token, res.user, role, remember, 'code')
   }
 
   /** 统一写入会话：校验角色匹配后持久化 token / role / user */
-  function persistSession(resToken: string, resUser: UserInfo, expectedRole?: Role, remember = true): UserInfo {
+  function persistSession(resToken: string, resUser: UserInfo, expectedRole?: Role, remember = true, mode?: LoginMode): UserInfo {
     if (expectedRole && resUser.role !== expectedRole) {
       // 安全网：服务端未拦截时也不写入会话，抛出带业务码的错误供页面映射 i18n
       clearSession()
       token.value = ''
       role.value = ''
       user.value = null
+      loginMode.value = ''
       const e = new Error('role mismatch') as Error & { code?: number }
       e.code = 1010
       throw e
@@ -53,6 +56,10 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = resUser
     setToken(resToken, remember)
     setRole(resUser.role, remember)
+    if (mode) {
+      loginMode.value = mode
+      setLoginMode(mode, remember)
+    }
     return resUser
   }
 
@@ -61,6 +68,12 @@ export const useAuthStore = defineStore('auth', () => {
     const me = await getMeApi()
     user.value = me
     role.value = me.role
+  }
+
+  /** 更新当前登录用户字段（账号信息保存后同步，避免二次请求） */
+  function setUser(patch: Partial<UserInfo>): void {
+    if (user.value) user.value = { ...user.value, ...patch }
+    else user.value = patch as UserInfo
   }
 
   function homePath(): string {
@@ -75,7 +88,8 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = ''
     role.value = ''
     user.value = null
+    loginMode.value = ''
   }
 
-  return { token, role, user, login, loginByCode, fetchMe, homePath, logout }
+  return { token, role, user, loginMode, login, loginByCode, fetchMe, setUser, homePath, logout }
 })

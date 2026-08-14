@@ -174,4 +174,22 @@ defineMock([
       return { ok: true }
     },
   },
+  {
+    // 修改密码（登录后）
+    method: 'post',
+    path: '/auth/change-password',
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      const { oldPassword, newPassword } = (ctx.body ?? {}) as {
+        oldPassword?: string
+        newPassword?: string
+      }
+      if (user.password !== oldPassword) throw new MockError('原密码错误', 1040)
+      if (!newPassword || !/^(?=.*[A-Za-z])(?=.*\d)[\S]{6,20}$/.test(newPassword)) {
+        throw new MockError('新密码需包含字母和数字，且长度为 6~20 位', 1041)
+      }
+      user.password = newPassword
+      return { ok: true }
+    },
+  },
 ])

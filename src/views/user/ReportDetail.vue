@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showToast, showConfirmDialog } from 'vant'
 import { getReportApi, generateReportApi, type ReportJoined } from '@/api/modules/report'
+import ReportTrendChart from '@/components/ReportTrendChart.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,6 +13,15 @@ const { t } = useI18n()
 
 const report = ref<ReportJoined | null>(null)
 const loading = ref(false)
+
+/** 五类趋势图配置（心率 / 呼吸率 / 血氧 / 体温 / 卡路里） */
+const TREND_METRICS = [
+  { key: 'heartRate', labelKey: 'user.health.heartRate', unitKey: 'user.health.bpm', color: '#ff6b6b' },
+  { key: 'respiratoryRate', labelKey: 'user.health.respiratory', unitKey: 'user.health.bpm', color: '#5b8ff9' },
+  { key: 'spo2', labelKey: 'user.health.spo2', unitKey: 'user.health.percent', color: '#00b4a6' },
+  { key: 'temperature', labelKey: 'user.health.temperature', unitKey: 'user.health.degreeC', color: '#ff9f43' },
+  { key: 'calorie', labelKey: 'user.health.calorie', unitKey: 'user.health.calorieUnit', color: '#34c759' },
+] as const
 
 async function load() {
   loading.value = true
@@ -123,6 +133,18 @@ load()
             <div class="metric-label">{{ t('user.reportDetail.dailySleep') }} h</div>
             <div class="metric-range">{{ t('user.reportDetail.dailyActivity') }} {{ (report.metricsSummary.totalActivity / 7 / 1000).toFixed(1) }}{{ t('user.reportDetail.stepsUnit') }}</div>
           </div>
+        </div>
+      </div>
+
+      <!-- 指标趋势（平滑折线图） -->
+      <div v-if="report.trend" class="block sp-card mt-16">
+        <div class="block-title">📈 {{ t('user.health.trendTitle') }}</div>
+        <div v-for="m in TREND_METRICS" :key="m.key" class="trend-item">
+          <div class="trend-head">
+            <span class="trend-name">{{ t(m.labelKey) }}</span>
+            <span class="trend-unit">{{ t(m.unitKey) }}</span>
+          </div>
+          <ReportTrendChart :points="report.trend[m.key]" :unit="t(m.unitKey)" :color="m.color" height="180px" />
         </div>
       </div>
 
@@ -242,6 +264,27 @@ load()
     font-size: 12px;
     color: var(--sp-text-secondary);
     line-height: 1.6;
+  }
+}
+.trend-item {
+  margin-bottom: 14px;
+  &:last-child {
+    margin-bottom: 0;
+  }
+  .trend-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 2px;
+    .trend-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--sp-text);
+    }
+    .trend-unit {
+      font-size: 12px;
+      color: var(--sp-text-placeholder);
+    }
   }
 }
 .metric-grid {
