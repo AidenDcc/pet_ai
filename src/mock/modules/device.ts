@@ -1,10 +1,25 @@
 import type { DeviceInfo, UploadRecord } from '@/types'
 import { defineMock, MockError, requireUser, mockAddress, rand } from '../helper'
-import { devices, pets, findDeviceById, findDeviceBySn, findPetById, tracks, trackHistory, telemetry, uploadLogs, pushUpload } from '../db'
+import {
+  devices,
+  pets,
+  findDeviceById,
+  findDeviceBySn,
+  findPetById,
+  tracks,
+  trackHistory,
+  telemetry,
+  uploadLogs,
+  pushUpload,
+  firmwarePackages,
+  compareVersion,
+  latestFirmwareVersion,
+} from '../db'
 
 export interface DeviceJoined extends DeviceInfo {
   petName: string | null
   ownerName: string | null
+  latestFirmware: string
 }
 
 export interface UploadRecordJoined extends UploadRecord {
@@ -17,6 +32,7 @@ function joinDevice(device: DeviceInfo): DeviceJoined {
     ...device,
     petName: pet?.name ?? null,
     ownerName: device.ownerId ?? null,
+    latestFirmware: latestFirmwareVersion(device.model),
   }
 }
 
@@ -114,6 +130,68 @@ defineMock([
       device.activatedAt = null
       device.geofence = null
       return { ok: true }
+    },
+  },
+  // 切换绑定宠物：解绑原宠物并绑定新宠物
+  {
+    method: 'post',
+    path: '/device/:id/rebind',
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      const device = findDeviceById(ctx.params.id)
+      if (!device) throw new MockError('设备不存在', 404)
+      if (device.ownerId && device.ownerId !== user.id) throw new MockError('无权操作该设备', 403)
+      const { petId } = (ctx.body ?? {}) as { petId?: string }
+      if (!petId) throw new MockError('请选择宠物', 1003)
+      const pet = findPetById(petId)
+      if (!pet) throw new MockError('选择的宠物不存在', 404)
+      if (pet.id === device.boundPetId) throw new MockError('该宠物已绑定此设备', 1005)
+      const oldPet = device.boundPetId ? findPetById(device.boundPetId) : undefined
+      if (oldPet) oldPet.deviceId = null
+      device.boundPetId = pet.id
+      pet.deviceId = device.id
+      return joinDevice(device)
+    },
+  },
+  // 固件检查
+  {
+    method: 'get',
+    path: '/device/:id/firmware',
+    handler: ({ params }) => {
+      const device = findDeviceById(params.id)
+      if (!device) throw new MockError('设备不存在', 404)
+      const latest = latestFirmwareVersion(device.model)
+      const pkg = firmwarePackages.find((f) => f.version === latest) ?? null
+      return {
+        current: device.firmware,
+        latest,
+        upgradable: latest !== '' && compareVersion(device.firmware, latest) < 0,
+        latestPackage: pkg
+          ? {
+              version: pkg.version,
+              name: pkg.name,
+              description: pkg.description,
+              releaseDate: pkg.releaseDate,
+              fileSize: pkg.fileSize,
+            }
+          : null,
+      }
+    },
+  },
+  // 固件升级
+  {
+    method: 'post',
+    path: '/device/:id/firmware/upgrade',
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      const device = findDeviceById(ctx.params.id)
+      if (!device) throw new MockError('设备不存在', 404)
+      if (device.ownerId && device.ownerId !== user.id) throw new MockError('无权操作该设备', 403)
+      const latest = latestFirmwareVersion(device.model)
+      if (!latest) throw new MockError('暂无可用固件', 404)
+      device.firmware = latest
+      device.lastSyncAt = new Date().toISOString()
+      return { ok: true, firmware: latest }
     },
   },
   // 远程指令

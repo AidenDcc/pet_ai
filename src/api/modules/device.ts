@@ -8,6 +8,8 @@ export interface UploadRecordJoined extends UploadRecord {
 export interface DeviceJoined extends DeviceInfo {
   petName: string | null
   ownerName: string | null
+  /** 该型号最新已发布固件版本号（空串表示暂无） */
+  latestFirmware: string
 }
 
 export function getDeviceListApi() {
@@ -39,6 +41,35 @@ export function bindDeviceApi(data: { sn: string; petId: string; name?: string }
 
 export function unbindDeviceApi(id: string) {
   return request.post<unknown, { ok: boolean }>(`/device/unbind/${id}`)
+}
+
+/** 切换绑定宠物：解绑原宠物并绑定新宠物 */
+export function rebindDeviceApi(id: string, petId: string) {
+  return request.post<unknown, DeviceJoined>(`/device/${id}/rebind`, { petId })
+}
+
+/** 设备固件检查结果 */
+export interface DeviceFirmwareInfo {
+  current: string
+  latest: string
+  upgradable: boolean
+  latestPackage: {
+    version: string
+    name: string
+    description: string
+    releaseDate: string
+    fileSize: number
+  } | null
+}
+
+/** 固件检查 */
+export function getDeviceFirmwareApi(id: string) {
+  return request.get<unknown, DeviceFirmwareInfo>(`/device/${id}/firmware`)
+}
+
+/** 固件升级 */
+export function upgradeDeviceFirmwareApi(id: string) {
+  return request.post<unknown, { ok: boolean; firmware: string }>(`/device/${id}/firmware/upgrade`)
 }
 
 export function commandDeviceApi(data: { deviceId: string; command: string }) {

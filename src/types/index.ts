@@ -126,6 +126,8 @@ export interface DeviceInfo {
   imei: string
   name: string
   model: 'Pet-S1'
+  /** 设备形态：颈环 / 项圈（决定设备图片） */
+  type: 'neckring' | 'collar'
   status: DeviceStatus
   battery: number // 0-100
   signal: number // RSSI 信号强度 dBm（-100 ~ -30）
@@ -294,6 +296,8 @@ export interface ReportItem {
   doctorId: string | null
   doctorReview: 'pending' | 'approved' | 'rejected' | null
   doctorComment: string | null
+  /** 用户已读时间（未读为 null） */
+  readAt: number | null
   createdAt: number
 }
 

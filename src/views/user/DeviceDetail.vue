@@ -7,12 +7,14 @@ import {
   getDeviceApi,
   commandDeviceApi,
   unbindDeviceApi,
+  rebindDeviceApi,
   type DeviceJoined,
 } from '@/api/modules/device'
-import { getPetApi, type PetJoined } from '@/api/modules/pet'
+import { getPetApi, getMyPetsApi, type PetJoined } from '@/api/modules/pet'
 import { DEVICE_STATUS, toVantTagType, SPECIES_ICON, GENDER_LABEL, COMMAND_FEEDBACK } from '@/utils/consts'
 import { relativeTime, formatDate } from '@/utils/format'
 import { petAvatarSrc } from '@/utils/petAvatar'
+import { deviceImageSrc } from '@/utils/deviceImage'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,6 +24,8 @@ const deviceId = route.params.id as string
 const device = ref<DeviceJoined | null>(null)
 const boundPet = ref<PetJoined | null>(null)
 const actionVisible = ref(false)
+const switchVisible = ref(false)
+const unboundPets = ref<PetJoined[]>([])
 
 const COMMANDS = computed(() => [
   { name: `🔔 ${t('user.devices.cmdFind')}`, value: 'find' },
@@ -42,7 +46,14 @@ const signalBars = computed(() => {
   const map: Record<string, number> = { strong: 4, good: 3, fair: 2, weak: 1, offline: 0 }
   return map[signalLevel.value]
 })
-const signalText = computed(() => t(`user.devices.signal${signalLevel.value}`))
+const SIGNAL_LABEL_KEY: Record<string, string> = {
+  strong: 'signalStrong',
+  good: 'signalGood',
+  fair: 'signalFair',
+  weak: 'signalWeak',
+  offline: 'signalOffline',
+}
+const signalText = computed(() => t(`user.devices.${SIGNAL_LABEL_KEY[signalLevel.value]}`))
 
 function batteryColor(b: number) {
   if (b > 50) return '#ff6b00'
@@ -110,6 +121,59 @@ async function unbind() {
   }
 }
 
+/** 切换绑定宠物：列出未绑定设备的宠物供选择 */
+const switchActions = computed(() =>
+  unboundPets.value.map((p) => ({
+    name: `${SPECIES_ICON[p.species]} ${p.name}（${p.breed}）`,
+    value: p.id,
+  })),
+)
+
+async function openSwitch() {
+  try {
+    const pets = await getMyPetsApi()
+    unboundPets.value = pets.filter((p) => !p.deviceId)
+  } catch (e) {
+    showToast((e as Error).message || t('common.loadFailed'))
+    return
+  }
+  if (!unboundPets.value.length) {
+    showToast(t('user.devices.switchPetEmpty'))
+    return
+  }
+  switchVisible.value = true
+}
+
+async function onSwitchSelect(action: { value: string; name?: string }) {
+  switchVisible.value = false
+  const pet = unboundPets.value.find((p) => p.id === action.value)
+  if (!pet) return
+  try {
+    await showConfirmDialog({
+      title: t('user.devices.switchPetTitle'),
+      message: t('user.devices.switchPetMsg', { name: pet.name }),
+    })
+  } catch {
+    return
+  }
+  try {
+    await rebindDeviceApi(deviceId, pet.id)
+    showToast(t('user.devices.switchPetSuccess'))
+    await load()
+  } catch (e) {
+    showToast((e as Error).message || t('user.devices.switchPetFailed'))
+  }
+}
+
+function goFirmware() {
+  router.push(`/user/devices/${deviceId}/firmware`)
+}
+
+const isLatestFirmware = computed(() => {
+  if (!device.value?.latestFirmware) return true
+  return device.value.firmware === device.value.latestFirmware
+})
+
 load()
 </script>
 
@@ -117,7 +181,7 @@ load()
   <div v-if="device" class="device-detail">
     <!-- 设备头部 -->
     <div class="hero sp-card">
-      <div class="hero-icon">📟</div>
+      <img class="hero-icon" :src="deviceImageSrc(device.type)" :alt="device.name" />
       <div class="hero-info">
         <div class="hero-name">
           {{ device.petName ? t('user.sync.collarOf', { name: device.petName }) : device.name }}
@@ -186,7 +250,17 @@ load()
       <div class="info-title">{{ t('user.devices.deviceInfo') }}</div>
       <van-cell title="IMEI" :value="device.imei" />
       <van-cell :title="t('user.devices.model')" :value="device.model" />
-      <van-cell :title="t('user.sync.firmware')" :value="device.firmware" />
+      <van-cell :title="t('user.sync.firmware')" is-link @click="goFirmware">
+        <template #value>
+          <span class="fw-cell">
+            <template v-if="device.latestFirmware">
+              <van-tag v-if="isLatestFirmware" round type="success">{{ t('user.firmware.latestTag') }}</van-tag>
+              <van-tag v-else round type="warning">{{ t('user.firmware.upgradeTag') }}</van-tag>
+            </template>
+            <span>{{ device.firmware }}</span>
+          </span>
+        </template>
+      </van-cell>
       <van-cell
         :title="t('user.devices.activatedAt')"
         :value="device.activatedAt ? formatDate(device.activatedAt) : t('user.devices.notActivated')"
@@ -203,6 +277,9 @@ load()
       <van-button v-if="device.boundPetId" block round plain type="primary" icon="bulb-o" @click="actionVisible = true">
         {{ t('user.devices.command') }}
       </van-button>
+      <van-button v-if="device.boundPetId" block round plain type="primary" icon="exchange" @click="openSwitch">
+        {{ t('user.devices.switchPet') }}
+      </van-button>
       <van-button v-if="device.boundPetId" block round plain type="danger" icon="delete-o" @click="unbind">
         {{ t('user.devices.unbind') }}
       </van-button>
@@ -215,6 +292,15 @@ load()
       :description="t('user.devices.chooseCmd')"
       teleport="#phone-teleport"
       @select="sendCommand"
+    />
+
+    <van-action-sheet
+      v-model:show="switchVisible"
+      :actions="switchActions"
+      :cancel-text="t('user.devices.cancel')"
+      :description="t('user.devices.switchPetTitle')"
+      teleport="#phone-teleport"
+      @select="onSwitchSelect"
     />
   </div>
 </template>
@@ -233,7 +319,10 @@ load()
   background: linear-gradient(135deg, #fff4dc, #ffe9b8);
 
   .hero-icon {
-    font-size: 30px;
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    flex-shrink: 0;
   }
   .hero-info {
     flex: 1;
@@ -374,6 +463,11 @@ load()
     font-size: 15px;
     font-weight: 700;
     margin-bottom: 6px;
+  }
+  .fw-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
 }
 

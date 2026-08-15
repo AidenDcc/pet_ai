@@ -51,16 +51,26 @@ function joinReport(report: ReportItem) {
 }
 
 defineMock([
-  // 我的健康报告列表（用户端，可按宠物过滤）
+  // 我的健康报告列表（用户端：支持未读/全部 + 宠物/时间区间/评分区间筛选）
   {
     method: 'get',
     path: '/report/list',
     handler: (ctx) => {
       const user = requireUser(ctx)
-      const petId = (ctx.query.petId as string) || ''
+      const q = ctx.query as Record<string, string>
+      const petId = q.petId || ''
+      const unread = q.unread === 'true' || q.unread === '1'
+      const from = Number(q.from ?? 0)
+      const to = Number(q.to ?? 0)
+      const minScore = Number(q.minScore ?? 0)
+      const maxScore = Number(q.maxScore ?? 100)
       let list = reports
       if (petId) list = list.filter((r) => r.petId === petId)
       else list = list.filter((r) => user.petIds.includes(r.petId))
+      if (unread) list = list.filter((r) => !r.readAt)
+      if (from) list = list.filter((r) => r.endAt >= from)
+      if (to) list = list.filter((r) => r.startAt <= to)
+      if (minScore > 0 || maxScore < 100) list = list.filter((r) => r.score >= minScore && r.score <= maxScore)
       return list
         .map(joinReport)
         .sort((a, b) => b.startAt - a.startAt)
@@ -113,6 +123,18 @@ defineMock([
       return joinReport(report)
     },
   },
+  // 标记报告已读
+  {
+    method: 'post',
+    path: '/report/:id/read',
+    handler: (ctx) => {
+      requireUser(ctx)
+      const report = reports.find((r) => r.id === ctx.params.id)
+      if (!report) throw new MockError('报告不存在', 404)
+      if (!report.readAt) report.readAt = Date.now()
+      return { ok: true }
+    },
+  },
   // 医生审核报告
   {
     method: 'post',
@@ -159,6 +181,7 @@ defineMock([
         doctorId: null,
         doctorReview: 'pending',
         doctorComment: null,
+        readAt: null,
         createdAt: now,
       }
       reports.push(report)

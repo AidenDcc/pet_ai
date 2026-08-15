@@ -311,6 +311,12 @@ export const userRoutes: RouteRecordRaw[] = [
         meta: { titleKey: 'user.devices.detail' },
       },
       {
+        path: 'devices/:id/firmware',
+        name: 'user-device-firmware',
+        component: () => import('@/views/user/FirmwareUpdate.vue'),
+        meta: { titleKey: 'user.firmware.title' },
+      },
+      {
         path: 'pets',
         name: 'user-pets',
         component: () => import('@/views/user/PetList.vue'),

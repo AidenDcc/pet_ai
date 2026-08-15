@@ -313,6 +313,7 @@ function addDevice(data: Partial<DeviceInfo>): DeviceInfo {
     imei: `86${rand(100000000000000, 999999999999999)}`,
     name: 'Pet-S1 智能项圈',
     model: 'Pet-S1',
+    type: 'collar',
     status: 'online',
     battery: rand(35, 98),
     signal: rand(-85, -40),
@@ -332,6 +333,7 @@ addDevice({
   id: 'd1',
   sn: 'SX010001001',
   imei: '861234560000001',
+  type: 'collar',
   boundPetId: 'p1',
   ownerId: demoOwner.id,
   status: 'online',
@@ -343,11 +345,13 @@ addDevice({
   id: 'd2',
   sn: 'SX010001002',
   imei: '861234560000002',
+  type: 'neckring',
   boundPetId: 'p2',
   ownerId: demoOwner.id,
   status: 'online',
   battery: 63,
   signal: -68,
+  firmware: 'v2.5.0',
   geofence: { center: { lat: 31.2204, lng: 121.4637 }, radius: 300, enabled: true },
 })
 
@@ -358,6 +362,7 @@ for (let i = 3; i <= pets.length; i++) {
   const d = addDevice({
     id: `d${i}`,
     sn: `SX01${String(1000 + i).padStart(6, '0')}`,
+    type: Math.random() > 0.5 ? 'collar' : 'neckring',
     boundPetId: pet.id,
     ownerId: pet.ownerId,
     status: Math.random() > 0.2 ? 'online' : 'offline',
@@ -372,6 +377,7 @@ for (let i = 0; i < 14; i++) {
   addDevice({
     id: `d${9000 + i}`,
     sn: `SX0199${String(i + 1).padStart(5, '0')}`,
+    type: Math.random() > 0.5 ? 'collar' : 'neckring',
     status: 'unbound',
     battery: rand(60, 99),
   })
@@ -592,7 +598,42 @@ export const firmwarePackages: FirmwarePackage[] = [
     upgradedCount: 0,
     description: '新一代架构预览版，包含全新 UI 升级包，仅限测试设备。',
   },
+  {
+    id: 'fw5',
+    name: 'Pet-S1 固件 v2.5.0',
+    version: 'v2.5.0',
+    supportModels: ['Pet-S1'],
+    supportCategories: ['cat1Wearable'],
+    releaseDate: '2024-04-02',
+    status: 'published',
+    fileSize: 28 * 1024 * 1024,
+    fileName: 'Pet-S1_v2.5.0.bin',
+    upgradedCount: 342,
+    description: '重构定位引擎，室内定位精度提升 30%；优化低功耗蓝牙连接稳定性；新增异常行为识别算法。',
+  },
 ]
+
+/** 比较语义化版本号（忽略 v 前缀，逐段数值比较；用于固件版本判断） */
+export function compareVersion(a: string, b: string): number {
+  const pa = a.replace(/^v/i, '').split('.').map(Number)
+  const pb = b.replace(/^v/i, '').split('.').map(Number)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] ?? 0
+    const y = pb[i] ?? 0
+    if (x !== y) return x - y
+  }
+  return 0
+}
+
+/** 指定型号最新已发布（稳定）固件版本号，无则返回空串 */
+export function latestFirmwareVersion(model: string): string {
+  const candidates = firmwarePackages
+    .filter((f) => f.status === 'published' && f.supportModels.includes(model) && !f.version.includes('-'))
+    .map((f) => f.version)
+  if (!candidates.length) return ''
+  candidates.sort(compareVersion)
+  return candidates[candidates.length - 1]
+}
 
 /* ============================================================
  * 宠物医生
@@ -927,6 +968,8 @@ function genReports(pet: PetInfo): ReportItem[] {
       doctorId: null,
       doctorReview,
       doctorComment: null,
+      // 最新一期默认未读，历史报告视为已读
+      readAt: isLatest ? null : endAt,
       createdAt: endAt,
     })
   }

@@ -465,6 +465,7 @@ function mapAiReport(pet: PetInfo, ai: Record<string, unknown>, context: {
     doctorId: null,
     doctorReview: 'pending',
     doctorComment: null,
+    readAt: null,
     createdAt: now,
   }
 }

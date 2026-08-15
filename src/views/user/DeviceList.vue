@@ -2,15 +2,15 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { showToast, showConfirmDialog } from 'vant'
+import { showToast } from 'vant'
 import {
   getDeviceListApi,
   commandDeviceApi,
-  unbindDeviceApi,
   type DeviceJoined,
 } from '@/api/modules/device'
 import { DEVICE_STATUS, toVantTagType, COMMAND_FEEDBACK } from '@/utils/consts'
 import { relativeTime } from '@/utils/format'
+import { deviceImageSrc } from '@/utils/deviceImage'
 
 const { t } = useI18n()
 
@@ -48,13 +48,12 @@ function goDetail(device: DeviceJoined) {
   router.push(`/user/devices/${device.id}`)
 }
 
-function openCommands(device: DeviceJoined) {
-  if (device.status !== 'online') {
-    showToast(t('user.devices.offlineCmd'))
-    return
-  }
-  actionDevice.value = device
-  actionVisible.value = true
+function goFirmware(device: DeviceJoined) {
+  router.push(`/user/devices/${device.id}/firmware`)
+}
+
+function isLatestFirmware(device: DeviceJoined) {
+  return !device.latestFirmware || device.firmware === device.latestFirmware
 }
 
 async function sendCommand(action: { value: string }) {
@@ -65,24 +64,6 @@ async function sendCommand(action: { value: string }) {
     showToast(t(COMMAND_FEEDBACK[action.value] ?? 'user.devices.cmdSent'))
   } catch (e) {
     showToast((e as Error).message || t('user.devices.cmdFailed'))
-  }
-}
-
-async function unbind(device: DeviceJoined) {
-  try {
-    await showConfirmDialog({
-      title: t('user.devices.unbindTitle'),
-      message: t('user.devices.unbindMsg', { sn: device.sn, name: device.petName ?? '' }),
-    })
-  } catch {
-    return
-  }
-  try {
-    await unbindDeviceApi(device.id)
-    showToast(t('user.devices.unbindSuccess'))
-    await load()
-  } catch (e) {
-    showToast((e as Error).message || t('user.devices.unbindFailed'))
   }
 }
 </script>
@@ -100,7 +81,7 @@ async function unbind(device: DeviceJoined) {
 
     <div v-for="d in devices" :key="d.id" class="device-card sp-card">
       <div class="device-top" @click="goDetail(d)">
-        <div class="device-icon">📟</div>
+        <img class="device-icon" :src="deviceImageSrc(d.type)" :alt="d.name" />
         <div class="device-info">
           <div class="device-name">
             {{ d.petName ? t('user.sync.collarOf', { name: d.petName }) : d.name }}
@@ -118,11 +99,17 @@ async function unbind(device: DeviceJoined) {
           <van-progress :percentage="d.battery" :color="batteryType(d.battery)" :stroke-width="8" track-color="#eef1f5" />
         </div>
         <div class="device-sub">
-          <span>{{ t('user.sync.firmware') }} {{ d.firmware }}</span>
+          <span class="firmware-cell" @click.stop="goFirmware(d)">
+            <template v-if="d.latestFirmware">
+              <van-tag v-if="isLatestFirmware(d)" round type="success">{{ t('user.firmware.latestTag') }}</van-tag>
+              <van-tag v-else round type="warning">{{ t('user.firmware.upgradeTag') }}</van-tag>
+            </template>
+            <span>{{ t('user.sync.firmware') }} {{ d.firmware }}</span>
+          </span>
           <span>{{ t('user.home.lastSync') }} {{ relativeTime(d.lastSyncAt) }}</span>
         </div>
       </div>
-
+<!-- 
       <div class="device-actions">
         <van-button size="small" round plain icon="info-o" @click="goDetail(d)">
           {{ t('user.devices.detailBtn') }}
@@ -142,6 +129,7 @@ async function unbind(device: DeviceJoined) {
           {{ t('user.devices.goBind') }}
         </van-button>
       </div>
+       -->
     </div>
 
     <van-empty v-if="!loading && !devices.length" :description="t('user.devices.empty')" />
@@ -181,7 +169,10 @@ async function unbind(device: DeviceJoined) {
   gap: 10px;
   cursor: pointer;
   .device-icon {
-    font-size: 26px;
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    flex-shrink: 0;
   }
   .device-info {
     flex: 1;
@@ -211,8 +202,15 @@ async function unbind(device: DeviceJoined) {
   .device-sub {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     font-size: 12px;
     color: var(--sp-text-placeholder);
+    .firmware-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
   }
 }
 .device-actions {

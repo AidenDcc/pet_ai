@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showToast, showConfirmDialog } from 'vant'
-import { getReportApi, generateReportApi, type ReportJoined } from '@/api/modules/report'
+import { getReportApi, generateReportApi, markReportReadApi, type ReportJoined } from '@/api/modules/report'
 import ReportTrendChart from '@/components/ReportTrendChart.vue'
 
 const route = useRoute()
@@ -27,6 +27,8 @@ async function load() {
   loading.value = true
   try {
     report.value = await getReportApi(reportId)
+    // 进入详情即标记已读（未读状态在列表页由 readAt 判定）
+    markReportReadApi(reportId).catch(() => undefined)
   } catch (e) {
     showToast((e as Error).message || t('common.loadFailed'))
   } finally {

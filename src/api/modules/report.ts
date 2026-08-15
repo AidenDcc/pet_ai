@@ -16,12 +16,29 @@ export interface ReportJoined extends ReportItem {
   trend?: ReportTrend
 }
 
-export function getReportListApi(params?: { petId?: string }) {
+export interface ReportListParams {
+  /** 仅返回未读报告 */
+  unread?: boolean
+  petId?: string
+  /** 时间区间起止（毫秒时间戳） */
+  from?: number
+  to?: number
+  /** 评分区间（0-100） */
+  minScore?: number
+  maxScore?: number
+}
+
+export function getReportListApi(params?: ReportListParams) {
   return request.get<unknown, ReportJoined[]>('/report/list', { params })
 }
 
 export function getReportApi(id: string) {
   return request.get<unknown, ReportJoined>(`/report/${id}`)
+}
+
+/** 标记报告为已读 */
+export function markReportReadApi(id: string) {
+  return request.post<unknown, { ok: boolean }>(`/report/${id}/read`)
 }
 
 export function getReviewListApi() {
