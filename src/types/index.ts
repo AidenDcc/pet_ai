@@ -254,6 +254,8 @@ export interface AbnormalItem {
 /** 健康报告 */
 export interface ReportItem {
   id: string
+  /** 报告编号（系统自动生成） */
+  reportNo: string
   petId: string
   period: string
   startAt: number
@@ -293,6 +295,33 @@ export interface ReportItem {
     /** 日均有效运动时长（分钟） */
     exerciseDurationMin: number
   }
+  /** 与上一周期比较（当前 - 上期；正=上升 负=下降） */
+  compare?: {
+    temperature: number
+    heartRate: number
+    spo2: number
+    respiratoryRate: number
+    stepFreq: number
+    stride: number
+    speed: number
+    calorie: number
+  }
+  /** 体征指标正常参考区间（详情页提示 icon） */
+  referenceRanges?: {
+    temperature: string
+    heartRate: string
+    spo2: string
+    respiratoryRate: string
+  }
+  /** 建议清单（AI 报告结论） */
+  recommendations?: string[]
+  /** 就医提示（AI 报告结论） */
+  vetReferral?: {
+    needed: boolean
+    urgency: 'routine' | 'urgent' | 'emergency'
+    warning: string
+    suggestedExams: string[]
+  }
   doctorId: string | null
   doctorReview: 'pending' | 'approved' | 'rejected' | null
   doctorComment: string | null
@@ -308,6 +337,9 @@ export interface ReportTrend {
   spo2: { ts: number; value: number }[]
   temperature: { ts: number; value: number }[]
   calorie: { ts: number; value: number }[]
+  stepFreq: { ts: number; value: number }[]
+  stride: { ts: number; value: number }[]
+  speed: { ts: number; value: number }[]
 }
 
 /** 宠物医生 */

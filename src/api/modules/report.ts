@@ -41,6 +41,11 @@ export function markReportReadApi(id: string) {
   return request.post<unknown, { ok: boolean }>(`/report/${id}/read`)
 }
 
+/** 医生端：为指定宠物生成报告（占位演示） */
+export function generateReportApi(petId: string) {
+  return request.post<unknown, ReportJoined>(`/report/generate/${petId}`)
+}
+
 export function getReviewListApi() {
   return request.get<unknown, ReportJoined[]>('/report/review-list')
 }
@@ -58,17 +63,19 @@ export function reviewReportApi(id: string, data: { action: 'approve' | 'reject'
   return request.post<unknown, ReportJoined>(`/report/${id}/review`, data)
 }
 
-export function generateReportApi(petId: string) {
-  return request.post<unknown, ReportJoined>(`/report/generate/${petId}`)
-}
-
-/** 运营端：按宠物 + 时间段调用 AI 生成健康报告 */
+/** 按宠物 + 时间段调用 AI 生成健康报告（运营端与宠物端共用生成逻辑） */
 export interface AiGenerateParams {
   startAt: number
   endAt: number
   timeRange: 'day' | 'week' | 'month'
 }
 
+/** 运营端：手动生成报告 */
 export function generateAiReportApi(petId: string, params: AiGenerateParams) {
   return request.post<unknown, ReportJoined>('/admin/report/ai-generate', { petId, ...params })
+}
+
+/** 宠物端：手动生成报告 */
+export function generateMyReportApi(petId: string, params: AiGenerateParams) {
+  return request.post<unknown, ReportJoined>('/report/ai-generate', { petId, ...params })
 }

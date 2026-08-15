@@ -23,7 +23,9 @@ import type {
   UserInfo,
   VetInfo,
 } from '@/types'
-import { pick, rand, randFloat, uid } from './helper'
+import { pick, rand, randFloat, uid, reportNo } from './helper'
+import { dayExercise } from './exercise'
+import { referenceRangesOf } from './refRange'
 import bdAvatar from '@/asset/image/宠物头像-布丁.png'
 import xqAvatar from '@/asset/image/宠物头像-雪球.png'
 
@@ -944,14 +946,50 @@ function genReports(pet: PetInfo): ReportItem[] {
     const sleepHours = Number(
       (healthData.filter((m) => m.sleepStage !== 'awake').length * 1.0 * 0.8).toFixed(1),
     )
+    const score = isLatest ? rand(78, 88) : rand(82, 96)
+    const grade: ReportItem['grade'] = score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : 'D'
+    // 由近 7 天日汇总推导运动指标
+    const exDays = (dailyAgg[pet.id] ?? []).filter((d) => d.ts >= startAt && d.ts <= endAt)
+    const exTotal = exDays.reduce((s, d) => s + d.steps, 0)
+    const exDaily = exDays.length ? Math.round(exTotal / exDays.length) : 0
+    const exs = exDays.map((d) => dayExercise(pet, d.ts, d.steps))
+    const med = (ns: number[]) => (ns.length ? [...ns].sort((a, b) => a - b)[Math.floor(ns.length / 2)] : 0)
+    const r1 = (n: number) => Math.round(n * 10) / 10
+    const r2 = (n: number) => Math.round(n * 100) / 100
+    // 上一周期（前 7 天）用于「与上周比较」
+    const prevDays = (dailyAgg[pet.id] ?? []).filter((d) => d.ts >= startAt - 7 * 86400000 && d.ts < startAt)
+    const prevExs = prevDays.map((d) => dayExercise(pet, d.ts, d.steps))
+    const compare = {
+      temperature: r1(med(exDays.map((d) => d.temperature.avg)) - med(prevDays.map((d) => d.temperature.avg))),
+      heartRate: Math.round(med(exDays.map((d) => d.heartRate.avg)) - med(prevDays.map((d) => d.heartRate.avg))),
+      spo2: r1(med(exDays.map((d) => d.spo2.avg)) - med(prevDays.map((d) => d.spo2.avg))),
+      respiratoryRate: Math.round(med(exDays.map((d) => d.respiratoryRate.avg)) - med(prevDays.map((d) => d.respiratoryRate.avg))),
+      stepFreq: Math.round(med(exs.map((e) => e.stepFreq)) - med(prevExs.map((e) => e.stepFreq))),
+      stride: r1(med(exs.map((e) => e.stride)) - med(prevExs.map((e) => e.stride))),
+      speed: r2(med(exs.map((e) => e.speed)) - med(prevExs.map((e) => e.speed))),
+      calorie: Math.round(med(exDays.map((d) => d.steps * 0.05)) - med(prevDays.map((d) => d.steps * 0.05))),
+    }
+    const recommendations: string[] = []
+    if (grade === 'A') recommendations.push('整体健康稳定，各项指标均在正常范围，继续保持当前生活节奏。')
+    if (grade === 'B') recommendations.push('个别指标轻微波动，属正常生理范围，建议观察并保持健康作息。')
+    if (grade === 'C') recommendations.push('存在亚健康信号，建议调整饮食与运动、观察异常指标，并预约基础体检。')
+    if (grade === 'D') recommendations.push('存在明显病理风险，请尽快联系宠物医院就诊。')
+    if (abnormal.length) recommendations.push(`重点关注：${abnormal.map((a) => a.label).join('、')}，建议加强监测。`)
+    const vetReferral = {
+      needed: grade === 'D',
+      urgency: (grade === 'D' ? 'urgent' : 'routine') as 'routine' | 'urgent' | 'emergency',
+      warning: grade === 'D' ? '建议尽快联系宠物医院就诊，并携带本周期完整数据。' : '',
+      suggestedExams: grade === 'D' ? ['血常规', '影像学检查（X 光 / 超声）'] : [],
+    }
     const doctorReview: ReportItem['doctorReview'] = isLatest ? 'pending' : Math.random() > 0.2 ? 'approved' : 'rejected'
     list.push({
       id: `r_${pet.id}_${i}`,
+      reportNo: reportNo(),
       petId: pet.id,
       period: `${new Date(startAt).toLocaleDateString('zh-CN')} 至 ${new Date(endAt).toLocaleDateString('zh-CN')}`,
       startAt,
       endAt,
-      score: isLatest ? rand(78, 88) : rand(82, 96),
+      score,
       summary: `${pet.name} 本周整体健康状态${isLatest ? '有轻度异常' : '良好'}，建议关注${abnormal.map((a) => a.label).join('、') || '日常运动与饮食'}。`,
       aiConclusion: isLatest
         ? `根据 Pet-S1 项圈连续 7 天采集的数据分析，${pet.name} 夜间心率均值 ${avgHr} 次/分，处于品种参考区间上限；活动量较上周下降约 18%。综合判断：整体健康度良好，存在轻度疲劳或环境适应迹象，建议调整作息并持续监测，暂无需就医。`
@@ -964,6 +1002,19 @@ function genReports(pet: PetInfo): ReportItem[] {
         temperature: { avg: pet.species === 'cat' ? 38.6 : 38.3, max: Number((38.3 + 0.7).toFixed(1)), min: Number((38.3 - 0.4).toFixed(1)) },
         totalActivity,
         sleepDuration: sleepHours,
+      },
+      grade,
+      referenceRanges: referenceRangesOf(pet),
+      compare,
+      recommendations,
+      vetReferral,
+      exerciseSummary: {
+        totalActivity: exTotal,
+        dailyActivity: exDaily,
+        stepFreq: Math.round(med(exs.map((e) => e.stepFreq))),
+        stride: Number(med(exs.map((e) => e.stride)).toFixed(1)),
+        speed: Number(med(exs.map((e) => e.speed)).toFixed(2)),
+        exerciseDurationMin: Math.round(med(exs.map((e) => e.durationMin))),
       },
       doctorId: null,
       doctorReview,

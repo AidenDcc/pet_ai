@@ -1,6 +1,8 @@
-import { defineMock, MockError, requireUser, requireRole, uid } from '../helper'
+import { defineMock, MockError, requireUser, requireRole, uid, reportNo } from '../helper'
 import { reports, findPetById, findUserById, findVetByUserId, vets, dailyAgg, health } from '../db'
-import type { ReportItem, ReportTrend } from '@/types'
+import { dayExercise } from '../exercise'
+import { referenceRangesOf } from '../refRange'
+import type { PetInfo, ReportItem, ReportTrend } from '@/types'
 
 /** 卡路里换算：每步消耗约 0.05 千卡（与健康模块口径一致） */
 const CAL_PER_STEP = 0.05
@@ -9,10 +11,16 @@ const calorieOf = (steps: number) => Math.round(steps * CAL_PER_STEP)
 /**
  * 根据报告周期生成趋势点位：
  * 单日（≤1.5 天）取逐小时健康数据；周/月取日汇总数据
+ * 运动指标（步频/步幅/速度）与卡路里由步数推导，保证与体征趋势同源
  */
-export function buildTrend(report: ReportItem): ReportTrend {
+export function buildTrend(report: ReportItem, pet?: PetInfo): ReportTrend {
   const dayMs = 86400000
   const spanDays = (report.endAt - report.startAt) / dayMs
+  /** 由步数推导运动趋势点（pet 缺失时回退 0） */
+  const exOf = (ts: number, steps: number, max = 12800) => {
+    const e = pet ? dayExercise(pet, ts, steps, max) : null
+    return { stepFreq: e?.stepFreq ?? 0, stride: e?.stride ?? 0, speed: e?.speed ?? 0 }
+  }
   if (spanDays <= 1.5) {
     const hourly = (health[report.petId] ?? []).filter((m) => m.ts >= report.startAt && m.ts <= report.endAt)
     return {
@@ -21,6 +29,9 @@ export function buildTrend(report: ReportItem): ReportTrend {
       spo2: hourly.map((m) => ({ ts: m.ts, value: m.spo2 })),
       temperature: hourly.map((m) => ({ ts: m.ts, value: m.temperature })),
       calorie: hourly.map((m) => ({ ts: m.ts, value: calorieOf(m.activity) })),
+      stepFreq: hourly.map((m) => ({ ts: m.ts, value: exOf(m.ts, m.activity, 620).stepFreq })),
+      stride: hourly.map((m) => ({ ts: m.ts, value: exOf(m.ts, m.activity, 620).stride })),
+      speed: hourly.map((m) => ({ ts: m.ts, value: exOf(m.ts, m.activity, 620).speed })),
     }
   }
   const days = (dailyAgg[report.petId] ?? []).filter((d) => d.ts >= report.startAt && d.ts <= report.endAt)
@@ -30,6 +41,9 @@ export function buildTrend(report: ReportItem): ReportTrend {
     spo2: days.map((d) => ({ ts: d.ts, value: d.spo2.avg })),
     temperature: days.map((d) => ({ ts: d.ts, value: d.temperature.avg })),
     calorie: days.map((d) => ({ ts: d.ts, value: calorieOf(d.steps) })),
+    stepFreq: days.map((d) => ({ ts: d.ts, value: exOf(d.ts, d.steps).stepFreq })),
+    stride: days.map((d) => ({ ts: d.ts, value: exOf(d.ts, d.steps).stride })),
+    speed: days.map((d) => ({ ts: d.ts, value: exOf(d.ts, d.steps).speed })),
   }
 }
 
@@ -46,7 +60,7 @@ function joinReport(report: ReportItem) {
     ownerId: pet?.ownerId ?? '',
     ownerName: owner?.name ?? '',
     ownerAvatar: owner?.avatar ?? '',
-    trend: buildTrend(report),
+    trend: buildTrend(report, pet ?? undefined),
   }
 }
 
@@ -152,7 +166,7 @@ defineMock([
       return joinReport(report)
     },
   },
-  // 生成报告占位（演示用）
+  // 医生端：生成报告占位（演示用）
   {
     method: 'post',
     path: '/report/generate/:petId',
@@ -160,11 +174,34 @@ defineMock([
       const pet = findPetById(params.petId)
       if (!pet) throw new MockError('宠物不存在', 404)
       const now = Date.now()
+      const startAt = now - 6 * 86400000
+      // 由近 7 天日汇总推导运动指标
+      const days = (dailyAgg[pet.id] ?? []).filter((d) => d.ts >= startAt && d.ts <= now)
+      const totalActivity = days.reduce((s, d) => s + d.steps, 0)
+      const dailyActivity = days.length ? Math.round(totalActivity / days.length) : 0
+      const exs = days.map((d) => dayExercise(pet, d.ts, d.steps))
+      const med = (ns: number[]) => (ns.length ? [...ns].sort((a, b) => a - b)[Math.floor(ns.length / 2)] : 0)
+      const r1 = (n: number) => Math.round(n * 10) / 10
+      const r2 = (n: number) => Math.round(n * 100) / 100
+      // 上一周期（前 7 天）用于「与上周比较」
+      const prevDays = (dailyAgg[pet.id] ?? []).filter((d) => d.ts >= startAt - 7 * 86400000 && d.ts < startAt)
+      const prevExs = prevDays.map((d) => dayExercise(pet, d.ts, d.steps))
+      const compare = {
+        temperature: r1(med(days.map((d) => d.temperature.avg)) - med(prevDays.map((d) => d.temperature.avg))),
+        heartRate: Math.round(med(days.map((d) => d.heartRate.avg)) - med(prevDays.map((d) => d.heartRate.avg))),
+        spo2: r1(med(days.map((d) => d.spo2.avg)) - med(prevDays.map((d) => d.spo2.avg))),
+        respiratoryRate: Math.round(med(days.map((d) => d.respiratoryRate.avg)) - med(prevDays.map((d) => d.respiratoryRate.avg))),
+        stepFreq: Math.round(med(exs.map((e) => e.stepFreq)) - med(prevExs.map((e) => e.stepFreq))),
+        stride: r1(med(exs.map((e) => e.stride)) - med(prevExs.map((e) => e.stride))),
+        speed: r2(med(exs.map((e) => e.speed)) - med(prevExs.map((e) => e.speed))),
+        calorie: Math.round(med(days.map((d) => d.steps * 0.05)) - med(prevDays.map((d) => d.steps * 0.05))),
+      }
       const report: ReportItem = {
         id: uid('r'),
+        reportNo: reportNo(),
         petId: pet.id,
-        period: `${new Date(now - 6 * 86400000).toLocaleDateString('zh-CN')} 至 ${new Date(now).toLocaleDateString('zh-CN')}`,
-        startAt: now - 6 * 86400000,
+        period: `${new Date(startAt).toLocaleDateString('zh-CN')} 至 ${new Date(now).toLocaleDateString('zh-CN')}`,
+        startAt,
         endAt: now,
         score: 90,
         summary: `${pet.name} 本周整体健康状态良好。`,
@@ -175,8 +212,21 @@ defineMock([
           respiratoryRate: { avg: 22, max: 30, min: 16 },
           spo2: { avg: 97.5, min: 95 },
           temperature: { avg: 38.3, max: 38.9, min: 37.8 },
-          totalActivity: 52000,
+          totalActivity,
           sleepDuration: 11.5,
+        },
+        grade: 'A',
+        referenceRanges: referenceRangesOf(pet),
+        compare,
+        recommendations: ['整体健康稳定，各项指标均在正常范围，继续保持当前生活节奏。'],
+        vetReferral: { needed: false, urgency: 'routine', warning: '', suggestedExams: [] },
+        exerciseSummary: {
+          totalActivity,
+          dailyActivity,
+          stepFreq: Math.round(med(exs.map((e) => e.stepFreq))),
+          stride: Number(med(exs.map((e) => e.stride)).toFixed(1)),
+          speed: Number(med(exs.map((e) => e.speed)).toFixed(2)),
+          exerciseDurationMin: Math.round(med(exs.map((e) => e.durationMin))),
         },
         doctorId: null,
         doctorReview: 'pending',

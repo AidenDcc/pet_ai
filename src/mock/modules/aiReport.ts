@@ -1,6 +1,8 @@
-import { defineMock, MockError, requireRole, uid } from '../helper'
+import { defineMock, MockError, requireUser, requireRole, uid, reportNo } from '../helper'
 import { reports, findPetById, findUserById, dailyAgg } from '../db'
 import { buildTrend } from './report'
+import { dayExercise } from '../exercise'
+import { referenceRangesOf } from '../refRange'
 import type { AbnormalItem, PetInfo, ReportItem } from '@/types'
 
 /**
@@ -34,18 +36,6 @@ function round1(n: number): number {
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
-}
-
-/** 以 ts 为种子的确定性随机（同一天两次生成结果一致） */
-function seeded(seed: number): () => number {
-  let t = (seed ^ 0x9e3779b9) >>> 0
-  return () => {
-    t = (t + 0x6d2b79f5) >>> 0
-    let x = t
-    x = Math.imul(x ^ (x >>> 15), x | 1)
-    x ^= x + Math.imul(x ^ (x >>> 7), x | 61)
-    return ((x ^ (x >>> 14)) >>> 0) / 4294967296
-  }
 }
 
 function ageMonths(birth: string): number {
@@ -91,21 +81,6 @@ interface ExerciseAgg {
   speed: number
   durationMin: number
   days: number
-}
-
-/** 当日运动指标推导：物种基线 + 当日活动量，确定性生成 */
-function dayExercise(pet: PetInfo, ts: number, steps: number): { stepFreq: number; stride: number; speed: number; durationMin: number } {
-  const isCat = pet.species === 'cat'
-  const baseFreq = isCat ? 45 : 80
-  const baseStride = isCat ? 16 : 26
-  const rnd = seeded(Math.floor(ts / DAY))
-  const active = Math.min(1, steps / 12800)
-  return {
-    stepFreq: Math.round(baseFreq + active * 60 + (rnd() * 16 - 8)),
-    stride: round1(baseStride + active * 12 + (rnd() * 4 - 2)),
-    speed: round2(0.3 + active * 1.2 + (rnd() * 0.3 - 0.15)),
-    durationMin: Math.round(20 + active * 70 + rnd() * 20),
-  }
 }
 
 function aggVitals(petId: string, startAt: number, endAt: number): VitalsAgg {
@@ -404,6 +379,7 @@ function mapAiReport(pet: PetInfo, ai: Record<string, unknown>, context: {
   exercise: ExerciseAgg
   extremes: ReturnType<typeof aggExtremes>
   calorie: { rer: number; der: number; actual: number; deviationPct: number }
+  prev: { vitals: VitalsAgg; exercise: ExerciseAgg }
   source: 'ai' | 'offline'
 }): ReportItem {
   const gradeRaw = String(ai.overall_grade ?? 'B').toUpperCase()
@@ -432,8 +408,44 @@ function mapAiReport(pet: PetInfo, ai: Record<string, unknown>, context: {
     ai.report_detail ??
       `# ${pet.name} 健康报告\n\n${summary}\n\n> 综合评级：${grade} 级\n> ${GRADE_DESC[grade]}`,
   )
+  // 与上一周期比较（当前 - 上期）
+  const prevV = context.prev.vitals
+  const prevE = context.prev.exercise
+  const compare = {
+    temperature: round1(context.vitals.temperature - prevV.temperature),
+    heartRate: Math.round(context.vitals.heartRate - prevV.heartRate),
+    spo2: round1(context.vitals.spo2 - prevV.spo2),
+    respiratoryRate: Math.round(context.vitals.respiratoryRate - prevV.respiratoryRate),
+    stepFreq: Math.round(context.exercise.stepFreq - prevE.stepFreq),
+    stride: round1(context.exercise.stride - prevE.stride),
+    speed: round2(context.exercise.speed - prevE.speed),
+    calorie: dailyCalorie(context.exercise) - dailyCalorie(prevE),
+  }
+  // 建议清单 + 就医提示（报告结论融合用）
+  const recommendations = Array.isArray(ai.recommendations)
+    ? ai.recommendations.map((r) => String(r)).filter(Boolean)
+    : []
+  const vetRaw = (ai.vet_referral ?? {}) as {
+    needed?: unknown
+    urgency?: unknown
+    warning?: unknown
+    suggested_exams?: unknown
+  }
+  const urgencyRaw = String(vetRaw.urgency ?? 'routine')
+  const vetReferral = {
+    needed: Boolean(vetRaw.needed),
+    urgency: (['routine', 'urgent', 'emergency'].includes(urgencyRaw) ? urgencyRaw : 'routine') as
+      | 'routine'
+      | 'urgent'
+      | 'emergency',
+    warning: String(vetRaw.warning ?? ''),
+    suggestedExams: Array.isArray(vetRaw.suggested_exams)
+      ? vetRaw.suggested_exams.map((s) => String(s)).filter(Boolean)
+      : [],
+  }
   return {
     id: uid('r'),
+    reportNo: reportNo(),
     petId: pet.id,
     period: `${periodStart} 至 ${periodEnd}`,
     startAt: context.startAt,
@@ -462,6 +474,10 @@ function mapAiReport(pet: PetInfo, ai: Record<string, unknown>, context: {
     source: context.source,
     grade,
     reportDetail,
+    compare,
+    referenceRanges: referenceRangesOf(pet),
+    recommendations,
+    vetReferral,
     doctorId: null,
     doctorReview: 'pending',
     doctorComment: null,
@@ -790,91 +806,122 @@ ${recMd}
 }
 
 /* ============================================================
+ * 报告生成（AI 优先，失败回退本地规则引擎）
+ * 运营端与宠物端共用此逻辑，避免维护两套。
+ * ============================================================ */
+
+interface GenerateOpts {
+  startAt?: number
+  endAt?: number
+  timeRange?: string
+}
+
+async function generateReportForPet(petId: string, opts: GenerateOpts) {
+  const pet = findPetById(petId)
+  if (!pet) throw new MockError('宠物不存在', 404)
+  const endAt = Number(opts.endAt ?? Date.now())
+  const startAt = Number(opts.startAt ?? endAt - 6 * DAY)
+  if (!Number.isFinite(startAt) || !Number.isFinite(endAt) || endAt <= startAt) {
+    throw new MockError('时间段无效')
+  }
+  if (endAt - startAt > 30 * DAY) throw new MockError('时间段不能超过 30 天')
+  const timeRange = (opts.timeRange as 'day' | 'week' | 'month') || deriveTimeRange(startAt, endAt)
+
+  // 聚合数据
+  const vitals = aggVitals(pet.id, startAt, endAt)
+  const exercise = aggExercise(pet, startAt, endAt)
+  const extremes = aggExtremes(pet.id, startAt, endAt)
+  const baseline = aggExercise(pet, startAt - baselineWindow(timeRange) * DAY, startAt)
+  const prev = {
+    vitals: aggVitals(pet.id, startAt - (endAt - startAt), startAt),
+    exercise: aggExercise(pet, startAt - (endAt - startAt), startAt),
+  }
+  const rer = 70 * Math.pow(pet.weight, 0.75)
+  const der = rer * derFactor(pet, lifeStageOf(pet))
+  const calorieActual = dailyCalorie(exercise)
+  const calorieDeviation = der ? ((calorieActual + rer - der) / der) * 100 : 0
+
+  const input = {
+    startAt,
+    endAt,
+    timeRange,
+    pet,
+    vitals,
+    exercise,
+    baseline,
+    prev,
+    calorie: { rer, der, actual: calorieActual, deviationPct: round1(calorieDeviation) },
+  }
+
+  let report: ReportItem
+  try {
+    const content = await callAi(SYSTEM_PROMPT, buildUserPrompt(input))
+    const aiJson = extractJson(content) as Record<string, unknown>
+    if (!aiJson || typeof aiJson !== 'object' || !('overall_grade' in aiJson)) throw new Error('AI 返回结构异常')
+    report = mapAiReport(pet, aiJson, { ...input, extremes, source: 'ai' })
+  } catch {
+    // AI 不可达/解析失败 → 本地规则引擎兜底
+    const analysis = analyzeLocal(pet, timeRange, vitals, exercise, baseline, prev)
+    const fallbackJson: Record<string, unknown> = {
+      overall_grade: analysis.grade,
+      overall_score: analysis.score,
+      grade_description: GRADE_DESC[analysis.grade],
+      report_summary: `${pet.name}${timeRange === 'day' ? '今日' : timeRange === 'week' ? '本周' : '本月'}健康评估：综合评级 ${analysis.grade} 级，${analysis.rootCause}`,
+      report_detail: buildOfflineDetail(pet, timeRange, vitals, exercise, baseline, analysis),
+      abnormal_indicators: analysis.abnormal.map((a) => a.label),
+      root_cause_analysis: analysis.rootCause,
+      recommendations: analysis.recommendations,
+      vet_referral: {
+        needed: analysis.grade === 'D',
+        urgency: analysis.grade === 'D' ? 'urgent' : 'routine',
+        warning: analysis.grade === 'D' ? '建议尽快联系宠物医院就诊，并携带本周期完整数据。' : '',
+        suggested_exams: analysis.grade === 'D' ? ['血常规', '影像学检查（X 光 / 超声）'] : [],
+      },
+    }
+    report = mapAiReport(pet, fallbackJson, { ...input, extremes, source: 'offline' })
+  }
+
+  reports.push(report)
+  const owner = findUserById(pet.ownerId)
+  return {
+    ...report,
+    petName: pet.name,
+    petAvatar: pet.avatar,
+    species: pet.species,
+    doctorName: null,
+    ownerId: pet.ownerId,
+    ownerName: owner?.name ?? '',
+    ownerAvatar: owner?.avatar ?? '',
+    trend: buildTrend(report, pet),
+  }
+}
+
+/* ============================================================
  * Mock 路由
  * ============================================================ */
 
 defineMock([
+  // 运营端：手动生成报告
   {
     method: 'post',
     path: '/admin/report/ai-generate',
     handler: async (ctx) => {
       requireRole(ctx, 'admin')
       const body = (ctx.body ?? {}) as { petId?: string; startAt?: number; endAt?: number; timeRange?: string }
-      const petId = body.petId
-      if (!petId) throw new MockError('请选择宠物')
-      const pet = findPetById(petId)
-      if (!pet) throw new MockError('宠物不存在', 404)
-      const endAt = Number(body.endAt ?? Date.now())
-      const startAt = Number(body.startAt ?? endAt - 6 * DAY)
-      if (!Number.isFinite(startAt) || !Number.isFinite(endAt) || endAt <= startAt) {
-        throw new MockError('时间段无效')
-      }
-      if (endAt - startAt > 30 * DAY) throw new MockError('时间段不能超过 30 天')
-      const timeRange = (body.timeRange as 'day' | 'week' | 'month') || deriveTimeRange(startAt, endAt)
-
-      // 聚合数据
-      const vitals = aggVitals(pet.id, startAt, endAt)
-      const exercise = aggExercise(pet, startAt, endAt)
-      const extremes = aggExtremes(pet.id, startAt, endAt)
-      const baseline = aggExercise(pet, startAt - baselineWindow(timeRange) * DAY, startAt)
-      const prev = {
-        vitals: aggVitals(pet.id, startAt - (endAt - startAt), startAt),
-        exercise: aggExercise(pet, startAt - (endAt - startAt), startAt),
-      }
-      const rer = 70 * Math.pow(pet.weight, 0.75)
-      const der = rer * derFactor(pet, lifeStageOf(pet))
-      const calorieActual = dailyCalorie(exercise)
-      const calorieDeviation = der ? ((calorieActual + rer - der) / der) * 100 : 0
-
-      const input = {
-        startAt,
-        endAt,
-        timeRange,
-        pet,
-        vitals,
-        exercise,
-        baseline,
-        prev,
-        calorie: { rer, der, actual: calorieActual, deviationPct: round1(calorieDeviation) },
-      }
-
-      let report: ReportItem
-      let aiJson: Record<string, unknown> | null = null
-      try {
-        const content = await callAi(SYSTEM_PROMPT, buildUserPrompt(input))
-        aiJson = extractJson(content) as Record<string, unknown>
-        if (!aiJson || typeof aiJson !== 'object' || !('overall_grade' in aiJson)) throw new Error('AI 返回结构异常')
-        report = mapAiReport(pet, aiJson, { ...input, extremes, source: 'ai' })
-      } catch {
-        // AI 不可达/解析失败 → 本地规则引擎兜底
-        const analysis = analyzeLocal(pet, timeRange, vitals, exercise, baseline, prev)
-        const fallbackJson: Record<string, unknown> = {
-          overall_grade: analysis.grade,
-          overall_score: analysis.score,
-          grade_description: GRADE_DESC[analysis.grade],
-          report_summary: `${pet.name}${timeRange === 'day' ? '今日' : timeRange === 'week' ? '本周' : '本月'}健康评估：综合评级 ${analysis.grade} 级，${analysis.rootCause}`,
-          report_detail: buildOfflineDetail(pet, timeRange, vitals, exercise, baseline, analysis),
-          abnormal_indicators: analysis.abnormal.map((a) => a.label),
-          root_cause_analysis: analysis.rootCause,
-          recommendations: analysis.recommendations,
-        }
-        report = mapAiReport(pet, fallbackJson, { ...input, extremes, source: 'offline' })
-      }
-
-      reports.push(report)
-      const owner = findUserById(pet.ownerId)
-      const joined = {
-        ...report,
-        petName: pet.name,
-        petAvatar: pet.avatar,
-        species: pet.species,
-        doctorName: null,
-        ownerId: pet.ownerId,
-        ownerName: owner?.name ?? '',
-        ownerAvatar: owner?.avatar ?? '',
-        trend: buildTrend(report),
-      }
-      return joined
+      if (!body.petId) throw new MockError('请选择宠物')
+      return generateReportForPet(body.petId, body)
+    },
+  },
+  // 宠物端：手动生成报告（与运营端共用同一套生成逻辑）
+  {
+    method: 'post',
+    path: '/report/ai-generate',
+    handler: async (ctx) => {
+      const user = requireUser(ctx)
+      const body = (ctx.body ?? {}) as { petId?: string; startAt?: number; endAt?: number; timeRange?: string }
+      if (!body.petId) throw new MockError('请选择宠物')
+      if (!user.petIds.includes(body.petId)) throw new MockError('无权操作该宠物', 403)
+      return generateReportForPet(body.petId, body)
     },
   },
 ])

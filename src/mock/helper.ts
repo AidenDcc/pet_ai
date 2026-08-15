@@ -71,6 +71,17 @@ export function uid(prefix = 'id'): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`
 }
 
+/** 报告编号自增序号（同一天内连续递增） */
+let reportSeq = 0
+
+/** 生成报告编号：RPT-YYYYMMDD-序号 */
+export function reportNo(): string {
+  reportSeq += 1
+  const d = new Date()
+  const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+  return `RPT-${ymd}-${String(reportSeq).padStart(4, '0')}`
+}
+
 export function requireUser(ctx: MockContext): DbUser {
   if (!ctx.user) throw new MockError('请先登录', 401)
   return ctx.user

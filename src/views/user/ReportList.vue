@@ -5,11 +5,13 @@ import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 import { showToast } from 'vant'
 import { getMyPetsApi, type PetJoined } from '@/api/modules/pet'
-import { getReportListApi, type ReportJoined } from '@/api/modules/report'
+import { getReportListApi, generateMyReportApi, type ReportJoined } from '@/api/modules/report'
 import { SPECIES_ICON } from '@/utils/consts'
 
 const router = useRouter()
 const { t } = useI18n()
+
+const DAY = 86400000
 
 const pets = ref<PetJoined[]>([])
 const reports = ref<ReportJoined[]>([])
@@ -28,6 +30,15 @@ const petPopupVisible = ref(false)
 const showCalendar = ref(false)
 const scorePopupVisible = ref(false)
 const scoreDraft = ref<[number, number]>([0, 100])
+
+/** 手动生成报告 */
+const genVisible = ref(false)
+const genPetId = ref('')
+/** 时间段：本周 / 本月 / 自定义 */
+const genRangeType = ref<'week' | 'month' | 'custom'>('week')
+const genCustomRange = ref<[Date, Date] | null>(null)
+const genCalendarVisible = ref(false)
+const generating = ref(false)
 
 const hasFilter = computed(
   () => !!filterPetId.value || !!filterTime.value || !!filterScore.value,
@@ -51,6 +62,11 @@ const scoreText = computed(() => {
 const emptyText = computed(() =>
   tab.value === 'unread' ? t('user.reports.unreadEmpty') : t('user.reports.empty'),
 )
+
+const genCustomText = computed(() => {
+  if (!genCustomRange.value) return t('user.reports.custom')
+  return `${dayjs(genCustomRange.value[0]).format('YYYY-MM-DD')} ~ ${dayjs(genCustomRange.value[1]).format('YYYY-MM-DD')}`
+})
 
 const calendarMin = computed(() => dayjs().subtract(365, 'day').startOf('day').toDate())
 const calendarMax = computed(() => dayjs().endOf('day').toDate())
@@ -128,6 +144,64 @@ function resetFilters() {
   filterTime.value = null
   filterScore.value = null
   loadReports().catch(() => undefined)
+}
+
+/* ---- 手动生成报告（与运营端逻辑一致：选宠物 → 选时间 → 生成） ---- */
+
+function openGenerate() {
+  genPetId.value = pets.value.length === 1 ? pets.value[0].id : ''
+  genRangeType.value = 'week'
+  genCustomRange.value = null
+  genVisible.value = true
+}
+
+/** 解析当前选择的时间段，返回时间戳范围与粒度；无效返回 null */
+function resolveGenRange(): { startAt: number; endAt: number; timeRange: 'day' | 'week' | 'month' } | null {
+  const now = Date.now()
+  if (genRangeType.value === 'week') return { startAt: now - 6 * DAY, endAt: now, timeRange: 'week' }
+  if (genRangeType.value === 'month') return { startAt: now - 29 * DAY, endAt: now, timeRange: 'month' }
+  const [s, e] = genCustomRange.value ?? []
+  if (!s || !e) return null
+  const startAt = s.getTime()
+  const endAt = Math.min(e.getTime() + DAY - 1, now)
+  const days = (endAt - startAt) / DAY
+  const timeRange = days <= 1.5 ? 'day' : days <= 10 ? 'week' : 'month'
+  return { startAt, endAt, timeRange }
+}
+
+function onGenCalendarConfirm(value: Date[]) {
+  const [s, e] = value
+  if (!s || !e) return
+  genCustomRange.value = [dayjs(s).startOf('day').toDate(), dayjs(e).startOf('day').toDate()]
+  genCalendarVisible.value = false
+}
+
+async function doGenerate() {
+  if (!genPetId.value) {
+    showToast(t('user.reports.selectPet'))
+    return
+  }
+  const range = resolveGenRange()
+  if (!range) {
+    showToast(t('user.reports.selectTimeRange'))
+    return
+  }
+  if ((range.endAt - range.startAt) / DAY > 30) {
+    showToast(t('user.reports.rangeTooLong'))
+    return
+  }
+  generating.value = true
+  try {
+    const report = await generateMyReportApi(genPetId.value, range)
+    showToast(t('user.reports.generated'))
+    genVisible.value = false
+    await loadReports()
+    router.push(`/user/reports/${report.id}`)
+  } catch (e) {
+    showToast((e as Error).message || t('common.opFailed'))
+  } finally {
+    generating.value = false
+  }
 }
 
 function reviewLabel(r: ReportJoined) {
@@ -241,6 +315,62 @@ loadPets()
         </div>
       </div>
     </van-popup>
+
+    <!-- 手动生成报告 -->
+    <van-popup v-model:show="genVisible" position="bottom" round teleport="#phone-teleport">
+      <div class="filter-popup gen-popup">
+        <div class="filter-popup-title">{{ t('user.reports.generate') }}</div>
+        <div class="gen-field">
+          <div class="gen-label">{{ t('user.reports.selectPet') }}</div>
+          <div class="gen-pet-options">
+            <div
+              v-for="p in pets"
+              :key="p.id"
+              class="filter-option"
+              :class="{ 'is-active': genPetId === p.id }"
+              @click="genPetId = p.id"
+            >
+              <span>{{ SPECIES_ICON[p.species] }} {{ p.name }}</span>
+              <van-icon v-if="genPetId === p.id" name="success" color="#ff6b00" />
+            </div>
+          </div>
+        </div>
+        <div class="gen-field">
+          <div class="gen-label">{{ t('user.reports.timeRange') }}</div>
+          <van-radio-group v-model="genRangeType" direction="horizontal">
+            <van-radio name="week">{{ t('user.reports.thisWeek') }}</van-radio>
+            <van-radio name="month">{{ t('user.reports.thisMonth') }}</van-radio>
+            <van-radio name="custom">{{ t('user.reports.custom') }}</van-radio>
+          </van-radio-group>
+          <div v-if="genRangeType === 'custom'" class="gen-custom" @click="genCalendarVisible = true">
+            <span>{{ genCustomText }}</span>
+            <van-icon name="arrow-down" />
+          </div>
+        </div>
+        <div class="gen-hint">{{ t('user.reports.rangeHint') }}</div>
+        <div class="filter-popup-footer">
+          <van-button size="small" plain round @click="genVisible = false">{{ t('common.cancel') }}</van-button>
+          <van-button size="small" round type="primary" :loading="generating" @click="doGenerate">
+            {{ t('common.confirm') }}
+          </van-button>
+        </div>
+      </div>
+    </van-popup>
+
+    <!-- 生成报告：自定义时间区间 -->
+    <van-calendar
+      v-model:show="genCalendarVisible"
+      type="range"
+      :min-date="calendarMin"
+      :max-date="calendarMax"
+      :title="t('user.reports.custom')"
+      @confirm="onGenCalendarConfirm"
+    />
+
+    <!-- 悬浮生成报告按钮（不随页面滚动） -->
+    <van-button class="fab" type="primary" icon="plus" round @click="openGenerate">
+      {{ t('user.reports.generate') }}
+    </van-button>
   </div>
 </template>
 
@@ -416,6 +546,50 @@ loadPets()
     .van-button {
       flex: 1;
     }
+  }
+}
+
+/* ---- 悬浮生成按钮 ---- */
+.fab {
+  position: fixed;
+  right: 16px;
+  bottom: 32px;
+  z-index: 200;
+  box-shadow: 0 4px 16px rgba(255, 107, 0, 0.35);
+}
+
+/* ---- 生成报告弹层 ---- */
+.gen-popup {
+  .gen-field {
+    margin-bottom: 16px;
+  }
+  .gen-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sp-text-secondary);
+    margin-bottom: 8px;
+  }
+  .gen-pet-options {
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  .gen-custom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #f7f9fc;
+    font-size: 13px;
+    color: var(--sp-text-secondary);
+    cursor: pointer;
+  }
+  .gen-hint {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--sp-text-placeholder);
+    line-height: 1.6;
   }
 }
 </style>
