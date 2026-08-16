@@ -57,7 +57,10 @@ defineMock([
       requireUser(ctx)
       return vets
         .filter((v) => v.certStatus === 'approved')
-        .map(({ id, name, hospital, title, avatar, specialty, consultPrice }) => ({ id, name, hospital, title, avatar, specialty, consultPrice }))
+        .map(({ id, name, hospital, title, avatar, specialty, consultPrice, specialtyDesc, certNo, species, score, monthlyAnswers, monthlyPrescriptions, honors, priceText, pricePhone }) => ({
+          id, name, hospital, title, avatar, specialty, consultPrice,
+          specialtyDesc, certNo, species, score, monthlyAnswers, monthlyPrescriptions, honors, priceText, pricePhone,
+        }))
     },
   },
   // 宠物主提交咨询（同宠物同医生重复提交视为更新内容与快照）
@@ -200,6 +203,18 @@ defineMock([
         })
         .filter((c) => c.pet !== null)
         .sort((a, b) => b.pushedAt - a.pushedAt)
+    },
+  },
+  // 医生详情（基本信息 + 评分 + 宠主评价）
+  // 注意：需放在 /doctor/consultations 之后，避免 :id 吞掉静态路径
+  {
+    method: 'get',
+    path: '/doctor/:id',
+    handler: (ctx) => {
+      requireUser(ctx)
+      const vet = findVetById(ctx.params.id)
+      if (!vet) throw new MockError('医生不存在', 404)
+      return vet
     },
   },
 ])

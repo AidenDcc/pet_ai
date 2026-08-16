@@ -39,6 +39,11 @@ export function getDoctorsApi() {
   return request.get<unknown, DoctorBrief[]>('/doctor/list')
 }
 
+/** 医生详情（基本信息 + 评分 + 宠主评价） */
+export function getDoctorDetailApi(id: string) {
+  return request.get<unknown, VetInfo>(`/doctor/${id}`)
+}
+
 /** 宠物主提交咨询（内容 / 图片 / 体征与运动快照） */
 export function pushConsultationApi(data: {
   petId: string

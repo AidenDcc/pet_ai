@@ -114,10 +114,10 @@ export const userRoutes: RouteRecordRaw[] = [
         meta: { titleKey: 'user.health.vitalsTitle' },
       },
       {
-        path: 'health/exercise',
+        path: 'health/exercise/:petId/:metricType',
         name: 'user-health-exercise',
-        component: () => import('@/views/user/FeaturePlaceholder.vue'),
-        meta: { titleKey: 'user.health.exerciseTrend', icon: 'chart-trending-o' },
+        component: () => import('@/views/user/ExerciseDetail.vue'),
+        meta: { titleKey: 'user.health.exerciseTrend' },
       },
       {
         path: 'health/fence/:petId',
@@ -163,6 +163,12 @@ export const userRoutes: RouteRecordRaw[] = [
         meta: { titleKey: 'user.consult.composeTitle' },
       },
       {
+        path: 'consult/doctor/:id',
+        name: 'user-consult-doctor-detail',
+        component: () => import('@/views/user/DoctorDetail.vue'),
+        meta: { titleKey: 'user.consult.doctorDetailTitle' },
+      },
+      {
         path: 'consult/records',
         redirect: '/user/consult',
       },
@@ -193,7 +199,7 @@ export const userRoutes: RouteRecordRaw[] = [
       {
         path: 'album',
         name: 'user-album',
-        component: () => import('@/views/user/FeaturePlaceholder.vue'),
+        component: () => import('@/views/user/Album.vue'),
         meta: { titleKey: 'nav.album', icon: 'photo-o' },
       },
       {
@@ -213,6 +219,18 @@ export const userRoutes: RouteRecordRaw[] = [
         name: 'user-me',
         component: () => import('@/views/user/Me.vue'),
         meta: { titleKey: 'nav.me', tabbar: true, hideNavbar: true },
+      },
+      {
+        path: 'messages',
+        name: 'user-messages',
+        component: () => import('@/views/user/MessageCenter.vue'),
+        meta: { titleKey: 'user.message.title' },
+      },
+      {
+        path: 'messages/:id',
+        name: 'user-message-detail',
+        component: () => import('@/views/user/MessageDetail.vue'),
+        meta: { titleKey: 'user.message.detailTitle' },
       },
       {
         path: 'myposts',

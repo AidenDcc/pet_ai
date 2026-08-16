@@ -149,6 +149,19 @@ defineMock([
       return { ok: true }
     },
   },
+  // 删除健康报告（宠物主）
+  {
+    method: 'delete',
+    path: '/report/:id',
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      const idx = reports.findIndex((r) => r.id === ctx.params.id)
+      if (idx < 0) throw new MockError('报告不存在', 404)
+      if (!user.petIds.includes(reports[idx].petId)) throw new MockError('无权操作该报告', 403)
+      reports.splice(idx, 1)
+      return { ok: true }
+    },
+  },
   // 医生审核报告
   {
     method: 'post',

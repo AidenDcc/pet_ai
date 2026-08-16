@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { showToast } from 'vant'
-import { getPetApi, updatePetApi, type PetJoined } from '@/api/modules/pet'
+import { showToast, showDialog } from 'vant'
+import { getPetApi, updatePetApi, deletePetApi, type PetJoined } from '@/api/modules/pet'
 import {
   getDoctorsApi,
   pushConsultationApi,
@@ -18,6 +18,7 @@ import PetAvatarUploader from '@/components/PetAvatarUploader.vue'
 import PetCareSections from '@/components/PetCareSections.vue'
 
 const route = useRoute()
+const router = useRouter()
 const petId = route.params.id as string
 const { t } = useI18n()
 
@@ -46,6 +47,7 @@ const form = ref<{
   personalityTags: [],
 })
 const saving = ref(false)
+const deleting = ref(false)
 
 const doctors = ref<DoctorBrief[]>([])
 const selectedDoctor = ref('')
@@ -87,6 +89,31 @@ async function save() {
     showToast((e as Error).message || t('common.saveFailed'))
   } finally {
     saving.value = false
+  }
+}
+
+async function removePet() {
+  if (!pet.value) return
+  try {
+    await showDialog({
+      title: t('common.confirmDelete'),
+      message: t('user.petList.deleteConfirm', { name: pet.value.name }),
+      confirmButtonText: t('common.delete'),
+      cancelButtonText: t('common.cancel'),
+      confirmButtonColor: '#ff6b6b',
+    })
+  } catch {
+    return
+  }
+  deleting.value = true
+  try {
+    await deletePetApi(petId)
+    showToast(t('user.petList.deleteSuccess'))
+    router.replace('/user/pets')
+  } catch (e) {
+    showToast((e as Error).message || t('user.petList.deleteFailed'))
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -231,6 +258,21 @@ loadPushed()
       </van-button>
     </div>
 
+    <!-- 删除宠物（危险操作） -->
+    <div class="delete-bar">
+      <van-button
+        block
+        round
+        plain
+        type="danger"
+        icon="delete-o"
+        :loading="deleting"
+        @click="removePet"
+      >
+        {{ t('user.profile.deletePet') }}
+      </van-button>
+    </div>
+
     <!-- 推送健康数据给医生（teleport 进手机外壳内） -->
     <van-popup
       v-model:show="pushVisible"
@@ -321,6 +363,9 @@ loadPushed()
 }
 .save-bar {
   margin-top: 20px;
+}
+.delete-bar {
+  margin-top: 12px;
 }
 .push-card {
   padding: 14px;

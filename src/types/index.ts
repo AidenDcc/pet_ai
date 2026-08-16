@@ -342,6 +342,23 @@ export interface ReportTrend {
   speed: { ts: number; value: number }[]
 }
 
+/** 宠主对医生的评价 */
+export interface DoctorReview {
+  id: string
+  /** 宠主昵称 */
+  userName: string
+  /** 宠主头像 */
+  avatar: string
+  /** 5 分制打分（如 5 / 4.5） */
+  score: number
+  /** 评价内容 */
+  content: string
+  /** 评价标签（如 专业 / 耐心 / 回复快） */
+  tags: string[]
+  /** 评价时间 */
+  createdAt: number
+}
+
 /** 宠物医生 */
 export interface VetInfo {
   id: string
@@ -367,6 +384,24 @@ export interface VetInfo {
   bio: string
   /** 职业证书编号（实名认证） */
   certNo: string
+  /** 擅长疾病描述（医生推荐列表） */
+  specialtyDesc: string
+  /** 接诊物种（狗狗/猫咪） */
+  species: ('dog' | 'cat')[]
+  /** 5 分制评分 */
+  score: number
+  /** 月回答数 */
+  monthlyAnswers: number
+  /** 月处方数 */
+  monthlyPrescriptions: number
+  /** 荣誉标签 */
+  honors: string[]
+  /** 图文问诊价（元） */
+  priceText: number
+  /** 电话问诊价（元） */
+  pricePhone: number
+  /** 宠主评价（医生详情页） */
+  reviews: DoctorReview[]
 }
 
 /** 订单状态 */
@@ -540,6 +575,24 @@ export interface DoctorBrief {
   specialty: string
   /** 问诊定价（元） */
   consultPrice: number
+  /** 擅长疾病描述（医生推荐列表第四行长文本） */
+  specialtyDesc: string
+  /** 执业证书编号（第二行） */
+  certNo: string
+  /** 接诊物种（第三行：狗狗/猫咪） */
+  species: ('dog' | 'cat')[]
+  /** 5 分制评分（第五行，如 4.9） */
+  score: number
+  /** 月回答数（第五行） */
+  monthlyAnswers: number
+  /** 月处方数（第五行） */
+  monthlyPrescriptions: number
+  /** 荣誉标签（第六行：技术院长 / 业内专家 / 211 院校…） */
+  honors: string[]
+  /** 图文问诊价（左下角） */
+  priceText: number
+  /** 电话问诊价（左下角） */
+  pricePhone: number
 }
 
 /* ============================================================
@@ -716,6 +769,74 @@ export interface CommunityComment {
   authorId: string
   content: string
   createdAt: number
+}
+
+/* ============================================================
+ * 消息中心（宠物主端）
+ * ============================================================ */
+
+/** 消息分类：健康消息 / 宠圈消息 / 系统消息 */
+export type MessageCategory = 'health' | 'community' | 'system'
+
+/** 消息附带的宠物体征信息 */
+export interface MessagePetVitals {
+  petName: string
+  petAvatar: string
+  breed: string
+  temperature: number
+  heartRate: number
+  spo2: number
+  respiratoryRate: number
+}
+
+/** 消息中心消息 */
+export interface MessageItem {
+  id: string
+  userId: string
+  category: MessageCategory
+  /** 主题 */
+  title: string
+  /** 发送人 */
+  sender: string
+  /** 列表摘要（简约内容） */
+  summary: string
+  /** 详情正文 */
+  content: string
+  /** 详情配图 */
+  images: string[]
+  /** 附带的宠物体征信息（健康消息等分享体征时非空） */
+  petVitals?: MessagePetVitals
+  /** 已读时间（未读为 null） */
+  readAt: number | null
+  createdAt: number
+}
+
+/** 各分类未读消息数 */
+export interface MessageUnread {
+  total: number
+  health: number
+  community: number
+  system: number
+}
+
+/* ============================================================
+ * 萌宠相册（宠物主端）
+ * ============================================================ */
+
+/** 相册媒体项（图片 / 视频） */
+export interface AlbumMedia {
+  id: string
+  petId: string
+  type: 'image' | 'video'
+  /** 图片为 dataURI；视频为播放 src（种子无真实源，仅展示海报） */
+  url: string
+  /** 视频海报（dataURI） */
+  poster?: string
+  /** 视频时长（秒） */
+  duration?: number
+  createdAt: number
+  /** 软删除时间戳（进入回收站的时间）；为空表示未删除 */
+  deletedAt?: number
 }
 
 /* ============================================================

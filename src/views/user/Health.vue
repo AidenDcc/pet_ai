@@ -122,10 +122,10 @@ function goVitals(metricType: string) {
   router.push(`/user/health/vitals/${pet.id}/${metricType}`)
 }
 
-function goExerciseTrend() {
+function goExerciseTrend(metricType = 'stepFreq') {
   const pet = activePet.value
   if (!pet) return
-  router.push('/user/health/exercise')
+  router.push(`/user/health/exercise/${pet.id}/${metricType}`)
 }
 
 function goFenceManage() {
@@ -438,7 +438,7 @@ loadAll()
             v-for="em in EXERCISE_METRICS"
             :key="em.key"
             class="exercise-item"
-            @click="goExerciseTrend()"
+            @click="goExerciseTrend(em.key)"
           >
           <!--
             <span class="exercise-icon">{{ em.icon }}</span>

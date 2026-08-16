@@ -3,9 +3,9 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
-import { showToast } from 'vant'
+import { showToast, showDialog } from 'vant'
 import { getMyPetsApi, type PetJoined } from '@/api/modules/pet'
-import { getReportListApi, generateMyReportApi, type ReportJoined } from '@/api/modules/report'
+import { getReportListApi, generateMyReportApi, deleteReportApi, type ReportJoined } from '@/api/modules/report'
 import { SPECIES_ICON } from '@/utils/consts'
 
 const router = useRouter()
@@ -16,6 +16,7 @@ const DAY = 86400000
 const pets = ref<PetJoined[]>([])
 const reports = ref<ReportJoined[]>([])
 const loading = ref(false)
+const deleting = ref<string | null>(null)
 
 /** 页签：未读 / 全部 */
 const tab = ref<'unread' | 'all'>('unread')
@@ -211,6 +212,30 @@ function reviewLabel(r: ReportJoined) {
   return { labelKey: 'user.reports.ai', type: 'primary' as const }
 }
 
+async function doDelete(r: ReportJoined) {
+  try {
+    await showDialog({
+      title: t('common.confirmDelete'),
+      message: t('user.reports.deleteConfirm', { pet: r.petName }),
+      confirmButtonText: t('common.delete'),
+      cancelButtonText: t('common.cancel'),
+      confirmButtonColor: '#ff6b6b',
+    })
+  } catch {
+    return
+  }
+  deleting.value = r.id
+  try {
+    await deleteReportApi(r.id)
+    reports.value = reports.value.filter((x) => x.id !== r.id)
+    showToast(t('user.reports.deleteSuccess'))
+  } catch (e) {
+    showToast((e as Error).message || t('user.reports.deleteFailed'))
+  } finally {
+    deleting.value = null
+  }
+}
+
 loadPets()
 </script>
 
@@ -241,12 +266,8 @@ loadPets()
 
     <van-skeleton :loading="loading" :row="4" />
 
-    <div
-      v-for="r in reports"
-      :key="r.id"
-      class="report-card sp-card"
-      @click="router.push(`/user/reports/${r.id}`)"
-    >
+    <van-swipe-cell v-for="r in reports" :key="r.id">
+      <div class="report-card sp-card" @click="router.push(`/user/reports/${r.id}`)">
       <div class="report-top">
         <span v-if="!r.readAt" class="unread-dot" />
         <div class="report-main">
@@ -266,7 +287,20 @@ loadPets()
         <van-tag v-else round type="success">{{ t('user.reports.normal') }}</van-tag>
         <van-tag round :type="reviewLabel(r).type">{{ t(reviewLabel(r).labelKey) }}</van-tag>
       </div>
-    </div>
+      </div>
+
+      <template #right>
+        <div class="swipe-del-wrap">
+          <van-button
+            square
+            class="swipe-del"
+            icon="delete-o"
+            :loading="deleting === r.id"
+            @click="doDelete(r)"
+          />
+        </div>
+      </template>
+    </van-swipe-cell>
 
     <van-empty v-if="!loading && !reports.length" :description="emptyText" />
 
@@ -430,6 +464,19 @@ loadPets()
   padding: 14px;
   margin-bottom: 12px;
   cursor: pointer;
+}
+.swipe-del-wrap {
+  display: flex;
+  height: calc(100% - 12px);
+  .swipe-del {
+    width: 64px;
+    height: 100%;
+    border: none;
+    border-radius: 0 12px 12px 0;
+    color: #fff;
+    font-size: 18px;
+    background: #ff6b6b;
+  }
 }
 .report-top {
   display: flex;

@@ -2,10 +2,9 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { showToast } from 'vant'
 import { useAuthStore } from '@/stores/auth'
 import { getMySubscriptionApi } from '@/api/modules/order'
-import { getUnreadCountApi, readAllNotificationsApi } from '@/api/modules/notification'
+import { getUnreadCountApi } from '@/api/modules/notification'
 import { APP_VERSION } from '@/utils/consts'
 import personalAvatar from '@/asset/image/个人头像.png'
 
@@ -29,7 +28,7 @@ const unreadCount = ref(0)
 
 async function loadUnread() {
   try {
-    unreadCount.value = (await getUnreadCountApi()).count
+    unreadCount.value = (await getUnreadCountApi()).total
   } catch {
     // 忽略未读消息加载失败
   }
@@ -68,18 +67,8 @@ const MENU = [
 ]
 
 // 顶部右上角：铃铛通知 / 六边形设置
-async function onBell() {
-  if (unreadCount.value > 0) {
-    try {
-      await readAllNotificationsApi()
-      unreadCount.value = 0
-      showToast(t('user.me.allRead'))
-    } catch {
-      showToast(t('user.me.noNotification'))
-    }
-  } else {
-    showToast(t('user.me.noNotification'))
-  }
+function onBell() {
+  go('/user/messages')
 }
 </script>
 

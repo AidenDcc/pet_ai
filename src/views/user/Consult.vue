@@ -33,6 +33,16 @@ function deptKeyOf(d: DoctorBrief): DeptKey {
   return 'internal'
 }
 
+/** 接诊物种标签文案（狗狗 / 猫咪） */
+function speciesLabel(s: 'dog' | 'cat'): string {
+  return s === 'dog' ? t('species.dog') : t('species.cat')
+}
+
+/** 跳转医生详情 */
+function goDetail(d: DoctorBrief) {
+  router.push(`/user/consult/doctor/${d.id}`)
+}
+
 const filteredDoctors = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
   return doctors.value.filter((d) => {
@@ -132,21 +142,50 @@ function goCompose() {
       <van-skeleton v-if="loading" title :row="3" class="mt-12" />
 
       <template v-else-if="filteredDoctors.length">
-        <div v-for="d in filteredDoctors" :key="d.id" class="doctor-card">
-          <div class="doc-avatar">
-            <img :src="d.avatar" :alt="d.name" />
-            <span class="doc-badge">🩺</span>
+        <div v-for="d in filteredDoctors" :key="d.id" class="doctor-card" @click="goDetail(d)">
+          <div class="doc-head">
+            <div class="doc-avatar">
+              <img :src="d.avatar" :alt="d.name" />
+            </div>
+            <div class="doc-body">
+              <!-- 第一行：姓名 + 职称 + 医院 -->
+              <div class="doc-row doc-name-row">
+                <span class="doc-name">{{ d.name }}</span>
+                <span class="doc-title">{{ d.title }}</span>
+                <span class="doc-hospital">{{ d.hospital }}</span>
+              </div>
+              <!-- 第二行：执业编号 -->
+              <div class="doc-row doc-cert">{{ t('user.consult.licenseNo') }}：{{ d.certNo }}</div>
+              <!-- 第三行：接诊物种标签 -->
+              <div class="doc-row doc-tags">
+                <span v-for="s in d.species" :key="s" class="tag">{{ speciesLabel(s) }}</span>
+              </div>
+              <!-- 第四行：擅长描述 -->
+              <div class="doc-row doc-specialty">{{ d.specialtyDesc }}</div>
+              <!-- 第五行：评分 + 月回答 + 月处方 -->
+              <div class="doc-row doc-stats">
+                <span class="stat-rate">
+                  <van-icon name="star" size="14" color="#ff9500" />
+                  <em>{{ d.score.toFixed(1) }}</em>
+                </span>
+                <span class="stat-divider" />
+                <span class="stat-metric">{{ t('user.consult.monthlyAnswers') }}<em>{{ d.monthlyAnswers }}</em></span>
+                <span class="stat-divider" />
+                <span class="stat-metric">{{ t('user.consult.monthlyPrescriptions') }}<em>{{ d.monthlyPrescriptions }}</em></span>
+              </div>
+              <!-- 第六行：荣誉标签 -->
+              <div class="doc-row doc-tags">
+                <span v-for="h in d.honors" :key="h" class="tag">{{ h }}</span>
+              </div>
+            </div>
           </div>
-          <div class="doc-main">
-            <div class="doc-name-row">
-              <span class="doc-name">{{ d.name }}</span>
-              <span class="doc-title">{{ d.title }}</span>
+          <!-- 底部：服务收费 + 问医生按钮 -->
+          <div class="doc-foot">
+            <div class="doc-prices">
+              <span class="price-item">{{ t('user.consult.textConsult') }}<b>¥{{ d.priceText }}</b></span>
+              <span class="price-item">{{ t('user.consult.phoneConsult') }}<b>¥{{ d.pricePhone }}</b></span>
             </div>
-            <div class="doc-info">{{ d.hospital }} · {{ t(`user.consult.${deptKeyOf(d)}`) }}</div>
-            <div class="doc-foot">
-              <span class="doc-price">¥{{ d.consultPrice }}</span>
-              <button class="doc-btn" type="button" @click="openPush(d)">{{ t('user.consult.consultNow') }}</button>
-            </div>
+            <button class="doc-btn" type="button" @click.stop="openPush(d)">{{ t('user.consult.askDoctor') }}</button>
           </div>
         </div>
       </template>
@@ -189,10 +228,10 @@ function goCompose() {
 </template>
 
 <style scoped lang="scss">
-/* 问诊首页：纯白背景、大圆角卡片、暖黄点缀（扁平无阴影） */
+/* 问诊首页：浅灰底 + 纯白无边框卡片（医疗简约扁平风） */
 .consult-page {
   padding: 16px 14px 24px;
-  background: #fff;
+  background: #f5f6f8;
   min-height: 100%;
   box-sizing: border-box;
 }
@@ -289,95 +328,178 @@ function goCompose() {
 }
 
 .doctor-card {
-  display: flex;
-  gap: 12px;
-  padding: 14px;
-  border-radius: 18px;
-  border: 1px solid #f0ead9;
+  padding: 16px 14px;
+  border-radius: 16px;
   background: #fff;
   margin-bottom: 12px;
+  box-shadow: 0 2px 10px rgba(17, 24, 39, 0.04);
+  cursor: pointer;
+}
 
-  .doc-avatar {
-    position: relative;
-    flex-shrink: 0;
-    width: 64px;
-    height: 64px;
-    border-radius: 14px;
-    background: #fff3c4;
-    overflow: hidden;
+.doc-head {
+  display: flex;
+  gap: 12px;
+}
 
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
+.doc-avatar {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #f2f3f5;
+  overflow: hidden;
 
-    .doc-badge {
-      position: absolute;
-      right: 2px;
-      bottom: 2px;
-      font-size: 12px;
-      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
-    }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.doc-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-row {
+  margin-bottom: 6px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* 第一行：姓名 + 职称 */
+.doc-name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+
+  .doc-name {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1a1a1a;
   }
 
-  .doc-main {
-    flex: 1;
-    min-width: 0;
+  .doc-title {
+    font-size: 13px;
+    font-weight: 400;
+    color: #8a8a8f;
   }
 
-  .doc-name-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .doc-name {
-      font-size: 16px;
-      font-weight: 800;
-      color: #2b2b2b;
-    }
-
-    .doc-title {
-      font-size: 11px;
-      color: #b08a4a;
-      background: #fff6df;
-      border-radius: 8px;
-      padding: 2px 8px;
-    }
-  }
-
-  .doc-info {
-    margin-top: 5px;
+  .doc-hospital {
     font-size: 12px;
-    color: #8a7a5a;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-weight: 400;
+    color: #b0b4ba;
+  }
+}
+
+/* 第二行：执业编号 */
+.doc-cert {
+  font-size: 12px;
+  color: #9aa0a6;
+}
+
+/* 第三 / 六行：浅灰圆角标签 */
+.doc-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  .tag {
+    font-size: 11px;
+    color: #6b7280;
+    background: #f2f3f5;
+    border-radius: 6px;
+    padding: 3px 10px;
+    line-height: 1.4;
+  }
+}
+
+/* 第四行：擅长描述（长文本，最多两行） */
+.doc-specialty {
+  font-size: 12px;
+  color: #8a8a8f;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 第五行：评分 + 月回答 + 月处方 */
+.doc-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .stat-rate {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 13px;
+    color: #ff9500;
+
+    em {
+      font-style: normal;
+      font-weight: 800;
+    }
   }
 
-  .doc-foot {
-    margin-top: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  .stat-divider {
+    width: 1px;
+    height: 12px;
+    background: #e5e7eb;
+  }
 
-    .doc-price {
-      font-size: 18px;
-      font-weight: 800;
-      color: #ff4d4f;
-    }
+  .stat-metric {
+    font-size: 12px;
+    color: #8a8a8f;
 
-    .doc-btn {
-      border: none;
-      border-radius: 999px;
-      background: #ffd54a;
-      color: #2b2b2b;
-      font-size: 13px;
+    em {
+      font-style: normal;
+      color: #ff9500;
       font-weight: 700;
-      padding: 7px 18px;
-      cursor: pointer;
+      margin-left: 2px;
     }
+  }
+}
+
+/* 底部：服务收费 + 问医生按钮 */
+.doc-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f1f3;
+
+  .doc-prices {
+    display: flex;
+    gap: 14px;
+
+    .price-item {
+      font-size: 12px;
+      color: #8a8a8f;
+
+      b {
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-left: 2px;
+      }
+    }
+  }
+
+  .doc-btn {
+    border: none;
+    border-radius: 999px;
+    background: #ffd54a;
+    color: #2b2b2b;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 8px 22px;
+    cursor: pointer;
   }
 }
 

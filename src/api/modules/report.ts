@@ -41,6 +41,11 @@ export function markReportReadApi(id: string) {
   return request.post<unknown, { ok: boolean }>(`/report/${id}/read`)
 }
 
+/** 删除健康报告 */
+export function deleteReportApi(id: string) {
+  return request.delete<unknown, { ok: boolean }>(`/report/${id}`)
+}
+
 /** 医生端：为指定宠物生成报告（占位演示） */
 export function generateReportApi(petId: string) {
   return request.post<unknown, ReportJoined>(`/report/generate/${petId}`)

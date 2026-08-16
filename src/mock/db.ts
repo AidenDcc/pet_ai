@@ -1,15 +1,18 @@
 import type {
+  AlbumMedia,
   CommunityComment,
   CommunityPost,
   Consultation,
   DeviceInfo,
   DeviceMaster,
+  DoctorReview,
   DictItem,
   DictType,
   FirmwarePackage,
   GeoPoint,
   HealthMetric,
   LoginLog,
+  MessageItem,
   OrderItem,
   PetInfo,
   ReportItem,
@@ -640,6 +643,22 @@ export function latestFirmwareVersion(model: string): string {
 /* ============================================================
  * 宠物医生
  * ============================================================ */
+
+/** 生成一条宠主评价（时间用相对天数，避免写死日期） */
+let reviewSeq = 0
+function reviewOf(userName: string, score: number, content: string, tags: string[], daysAgo: number): DoctorReview {
+  reviewSeq += 1
+  return {
+    id: `rv${reviewSeq}`,
+    userName,
+    avatar: avatarOf(userName.slice(0, 1)),
+    score,
+    content,
+    tags,
+    createdAt: Date.now() - daysAgo * 86400000,
+  }
+}
+
 export const vets: VetInfo[] = [
   {
     id: 'v1',
@@ -658,6 +677,20 @@ export const vets: VetInfo[] = [
     avgWaitTime: 8,
     bio: '从事小动物临床诊疗 15 年，主攻犬猫内科与心脏病学，擅长老年宠物的慢病管理与心衰综合治疗，累计接诊宠物 5000+ 例。',
     certNo: '兽执业字第 2019-003-1527 号',
+    specialtyDesc: '犬猫呕吐拉稀等症状，传染性疾病，寄生虫疾病，消化系统，呼吸系统，泌尿系统疾病，产科，心脏病科等疾病。专攻产科，心脏及肿瘤相关疾病。',
+    species: ['dog', 'cat'],
+    score: 4.9,
+    monthlyAnswers: 268,
+    monthlyPrescriptions: 52,
+    honors: ['技术院长', '业内专家', '211 院校'],
+    priceText: 59,
+    pricePhone: 79,
+    reviews: [
+      reviewOf('布丁妈妈', 5, '陈医生非常专业，我家柯基拉肚子，问诊后按建议调整饮食两天就好了，回复也很快！', ['专业', '耐心', '回复快'], 2),
+      reviewOf('可乐爸', 4.5, '经验很丰富，判断准确，就是高峰期等待时间稍长一点。', ['经验丰富', '专业'], 6),
+      reviewOf('团子妈妈', 5, '猫咪心脏病复查一直找陈医生，讲解通俗易懂，处方也很到位。', ['耐心', '专业', '值得信赖'], 12),
+      reviewOf('旺财主人', 4.8, '第一次线上问诊，流程很顺畅，医生追问了很多细节，很负责。', ['负责', '细致'], 20),
+    ],
   },
   {
     id: 'v2',
@@ -676,6 +709,19 @@ export const vets: VetInfo[] = [
     avgWaitTime: 6,
     bio: '擅长犬猫皮肤病诊治、过敏原排查及老年宠物综合护理，注重以通俗易懂的方式为家长讲解护理要点。',
     certNo: '兽执业字第 2021-006-2088 号',
+    specialtyDesc: '擅长犬猫皮肤病、过敏性疾病、耳道及眼部疾病诊治，老年宠慢性病管理与术后护理指导。',
+    species: ['dog', 'cat'],
+    score: 4.8,
+    monthlyAnswers: 186,
+    monthlyPrescriptions: 31,
+    honors: ['业内专家', '211 院校'],
+    priceText: 39,
+    pricePhone: 59,
+    reviews: [
+      reviewOf('雪球妈妈', 5, '皮肤问题反复了半年，李医生一步步排查过敏原，现在终于稳定了，太感谢！', ['专业', '耐心'], 3),
+      reviewOf('奶茶主人', 4.8, '回复特别细致，用药说明很清楚，还会主动回访。', ['细致', '负责'], 9),
+      reviewOf('豆豆妈妈', 4.5, '老年猫护理指导很实用，态度也好。', ['专业', '态度好'], 18),
+    ],
   },
   {
     id: 'v3',
@@ -694,6 +740,18 @@ export const vets: VetInfo[] = [
     avgWaitTime: 12,
     bio: '专注小动物骨科与麻醉方向，熟练开展骨折内固定、髌骨脱位修复等手术，术前术后管理经验丰富。',
     certNo: '兽执业字第 2023-002-3156 号',
+    specialtyDesc: '擅长犬猫骨科疾病诊治与麻醉管理，熟练开展骨折内固定、髌骨脱位修复等手术。',
+    species: ['dog', 'cat'],
+    score: 4.7,
+    monthlyAnswers: 92,
+    monthlyPrescriptions: 18,
+    honors: ['业内专家'],
+    priceText: 29,
+    pricePhone: 49,
+    reviews: [
+      reviewOf('阿福主人', 4.7, '骨科术前咨询讲解很透彻，让人安心。', ['专业'], 5),
+      reviewOf('橘子妈妈', 4.6, '骨折术后恢复指导到位，回答及时。', ['回复快'], 15),
+    ],
   },
   {
     id: 'v4',
@@ -712,6 +770,18 @@ export const vets: VetInfo[] = [
     avgWaitTime: 10,
     bio: '擅长犬猫内科疾病的诊断与超声影像判读，对消化系统疾病及泌尿系统疾病有较深入研究。',
     certNo: '兽执业字第 2022-008-4730 号',
+    specialtyDesc: '擅长犬猫内科疾病诊断与超声影像判读，对消化系统及泌尿系统疾病有深入研究。',
+    species: ['dog', 'cat'],
+    score: 4.8,
+    monthlyAnswers: 104,
+    monthlyPrescriptions: 23,
+    honors: ['211 院校'],
+    priceText: 29,
+    pricePhone: 49,
+    reviews: [
+      reviewOf('米粒妈妈', 4.8, 'B 超报告解读很详细，泌尿问题给了明确方案。', ['专业', '细致'], 4),
+      reviewOf('果冻主人', 4.7, '态度亲切，解释清楚，很不错。', ['态度好'], 11),
+    ],
   },
 ]
 
@@ -1364,6 +1434,310 @@ commentSeeds.forEach((c, i) => {
     createdAt: Date.now() - c.minutesAgo * 60000,
   })
 })
+
+/* ============================================================
+ * 消息中心（宠物主端）
+ * ============================================================ */
+export const messages: MessageItem[] = []
+
+interface MessageSeed {
+  category: MessageItem['category']
+  title: string
+  sender: string
+  summary: string
+  content: string
+  /** 配图张数（0 表示无图） */
+  imageCount: number
+  /** 附带的宠物体征（undefined 表示无） */
+  vitals?: MessageItem['petVitals']
+  /** 是否未读 */
+  unread: boolean
+  /** 发送于多少分钟前 */
+  minutesAgo: number
+}
+
+const MESSAGE_SEEDS: MessageSeed[] = [
+  {
+    category: 'health',
+    title: '布丁今日健康快报',
+    sender: '数心智能健康中心',
+    summary: '布丁今日体征平稳，心率、体温均在正常范围，运动量充足。',
+    content:
+      '亲爱的林悦，您好！\n\n布丁今天的健康数据已生成，整体状态良好：\n· 心率、呼吸、血氧、体温均处于正常区间\n· 今日活动量达标，睡眠质量优秀\n· 无异常告警记录\n\n请继续保持当前的作息与饮食节奏，Pet-S1 将为您持续守护。',
+    imageCount: 1,
+    vitals: {
+      petName: '布丁',
+      petAvatar: bdAvatar,
+      breed: '柯基',
+      temperature: 38.5,
+      heartRate: 96,
+      spo2: 98,
+      respiratoryRate: 22,
+    },
+    unread: true,
+    minutesAgo: 35,
+  },
+  {
+    category: 'health',
+    title: '雪球心率偏快提醒',
+    sender: '数心智能健康中心',
+    summary: '雪球 14:20 出现一过性心率升高，请留意其活动与情绪状态。',
+    content:
+      '尊敬的林悦：\n\n系统监测到雪球在 14:20 左右出现一过性心率升高（峰值 168 次/分），持续约 3 分钟后自行恢复。\n\n结合当时活动量判断，多为追逐玩耍或短暂应激所致，暂不构成健康风险。建议持续观察，若频繁出现请及时联系兽医。',
+    imageCount: 0,
+    vitals: {
+      petName: '雪球',
+      petAvatar: xqAvatar,
+      breed: '布偶猫',
+      temperature: 38.4,
+      heartRate: 152,
+      spo2: 99,
+      respiratoryRate: 26,
+    },
+    unread: true,
+    minutesAgo: 60 * 3,
+  },
+  {
+    category: 'health',
+    title: '布丁周度健康报告已生成',
+    sender: '数心智能健康中心',
+    summary: '布丁本周综合健康评分 92 分（A 级），点击查看完整报告。',
+    content:
+      '布丁本周健康报告已生成，综合评分 92 分，评级 A。\n\n本周各指标波动平稳，运动量与睡眠均保持良好，未发现需关注的异常项。详细数据分析可前往「健康报告」页查看。',
+    imageCount: 0,
+    unread: false,
+    minutesAgo: 60 * 26,
+  },
+  {
+    category: 'community',
+    title: '你的帖子被点赞了',
+    sender: '宠圈小助手',
+    summary: '「布丁今天的柯基拖地舞」收获 45 个赞，快去看看谁在关注你。',
+    content:
+      '你发布的「布丁今天的柯基拖地舞，笑死我了 🐶」近期人气高涨，共收获 45 个赞、8 条评论。\n\n感谢你分享布丁的欢乐日常，继续记录更多萌宠瞬间吧！',
+    imageCount: 0,
+    unread: true,
+    minutesAgo: 50,
+  },
+  {
+    category: 'community',
+    title: '关注的人更新了动态',
+    sender: '宠圈小助手',
+    summary: '「豆豆」发布了新动态：第一次学会握手，老母亲泪目。',
+    content:
+      '你关注的宠友「豆豆」刚刚更新了动态，分享了萌宠学会握手的喜悦瞬间。\n\n点击下方图片查看原帖，快去点个赞互动一下吧～',
+    imageCount: 1,
+    unread: true,
+    minutesAgo: 60 * 3,
+  },
+  {
+    category: 'community',
+    title: '有人评论了你的帖子',
+    sender: '宠圈小助手',
+    summary: '「奶茶」评论了你的帖子：「同款公园，下次偶遇呀 😄」',
+    content:
+      '宠友「奶茶」在你的帖子「布丁今天的柯基拖地舞」下评论：「同款公园，下次偶遇呀 😄」。\n\n进入宠圈查看全部评论并回复吧。',
+    imageCount: 0,
+    unread: false,
+    minutesAgo: 60 * 5,
+  },
+  {
+    category: 'system',
+    title: '订阅服务续费提醒',
+    sender: '数心智能平台',
+    summary: '你的专业版订阅将于 30 天后到期，续费可享早鸟优惠。',
+    content:
+      '尊敬的林悦：\n\n您订阅的「专业版」服务将于 30 天后到期。到期后 AI 智能分析、医生在线问诊等高级功能将暂停。\n\n续费可享限时早鸟优惠，点击「订阅服务」了解详情。',
+    imageCount: 0,
+    unread: true,
+    minutesAgo: 60 * 8,
+  },
+  {
+    category: 'system',
+    title: '设备固件有新版本',
+    sender: '数心智能平台',
+    summary: 'Pet-S1 固件 V2.4.1 已发布，建议及时升级以获得更好体验。',
+    content:
+      '您的 Pet-S1 智能项圈有新的固件版本 V2.4.1 可升级。\n\n本次更新优化了心率监测精度与定位稳定性，建议在设备电量充足时前往「设备管理 → 固件升级」完成更新。',
+    imageCount: 0,
+    unread: false,
+    minutesAgo: 60 * 20,
+  },
+  {
+    category: 'system',
+    title: '欢迎加入数心智能宠物平台',
+    sender: '数心智能平台',
+    summary: '欢迎加入，为你的爱宠绑定 Pet-S1，开启 24 小时健康守护。',
+    content:
+      '欢迎加入数心智能宠物平台！\n\n为你的爱宠佩戴 Pet-S1 智能项圈，即可享受 24 小时生命体征监测、实时定位与电子围栏、健康报告等一站式守护服务。',
+    imageCount: 1,
+    unread: false,
+    minutesAgo: 60 * 24 * 3,
+  },
+]
+
+MESSAGE_SEEDS.forEach((s, i) => {
+  const images: string[] = []
+  for (let k = 0; k < s.imageCount; k++) {
+    images.push(postImageOf(`消息配图 ${k + 1}`, pick(postImagePalette)))
+  }
+  messages.push({
+    id: `msg${i + 1}`,
+    userId: demoOwner.id,
+    category: s.category,
+    title: s.title,
+    sender: s.sender,
+    summary: s.summary,
+    content: s.content,
+    images,
+    petVitals: s.vitals,
+    readAt: s.unread ? null : Date.now() - s.minutesAgo * 60000,
+    createdAt: Date.now() - s.minutesAgo * 60000,
+  })
+})
+
+/** 某用户（可选分类）的消息，按发送时间倒序 */
+export function messagesOf(userId: string, category?: MessageItem['category']): MessageItem[] {
+  return messages
+    .filter((m) => m.userId === userId && (!category || m.category === category))
+    .sort((a, b) => b.createdAt - a.createdAt)
+}
+
+export function findMessageById(id: string): MessageItem | undefined {
+  return messages.find((m) => m.id === id)
+}
+
+/** 各分类未读数（含总数） */
+export function unreadByCategory(userId: string): { total: number; health: number; community: number; system: number } {
+  const unread = messages.filter((m) => m.userId === userId && m.readAt === null)
+  const countOf = (c: MessageItem['category']) => unread.filter((m) => m.category === c).length
+  return {
+    total: unread.length,
+    health: countOf('health'),
+    community: countOf('community'),
+    system: countOf('system'),
+  }
+}
+
+/** 标记单条已读 */
+export function markMessageRead(id: string): void {
+  const m = messages.find((x) => x.id === id)
+  if (m && m.readAt === null) m.readAt = Date.now()
+}
+
+/** 标记全部已读 */
+export function markAllMessagesRead(userId: string): void {
+  messages.forEach((m) => {
+    if (m.userId === userId && m.readAt === null) m.readAt = Date.now()
+  })
+}
+
+/** 批量标记已读（返回实际处理条数） */
+export function markMessagesRead(ids: string[]): number {
+  let n = 0
+  messages.forEach((m) => {
+    if (ids.includes(m.id) && m.readAt === null) {
+      m.readAt = Date.now()
+      n++
+    }
+  })
+  return n
+}
+
+/** 批量删除消息（返回实际删除条数） */
+export function removeMessages(ids: string[]): number {
+  let n = 0
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (ids.includes(messages[i].id)) {
+      messages.splice(i, 1)
+      n++
+    }
+  }
+  return n
+}
+
+/* ============================================================
+ * 萌宠相册（宠物主端）
+ * ============================================================ */
+export const albumMedia: AlbumMedia[] = []
+
+/** 视频海报：纯色底 + 🎬 + 标签（无真实视频源，仅海报展示） */
+function videoPosterOf(label: string, color: string): string {
+  return `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><rect width="600" height="600" fill="${color}"/><text x="300" y="250" font-size="150" text-anchor="middle">🎬</text><text x="300" y="390" font-size="40" fill="#fff" text-anchor="middle" font-family="sans-serif">${label}</text></svg>`,
+  )}`
+}
+
+// 种子：为演示宠物 p1/p2 各生成图片 + 视频（时间倒序，模拟相册历史）
+const ALBUM_SEEDS: { petId: string; petName: string }[] = [
+  { petId: 'p1', petName: '布丁' },
+  { petId: 'p2', petName: '雪球' },
+]
+
+ALBUM_SEEDS.forEach(({ petId, petName }) => {
+  const now = Date.now()
+  const MIN = 60000
+  // minutesAgo 越大越旧，数组按时间正序（新在前）
+  const spots: { type: 'image' | 'video'; minutesAgo: number }[] = [
+    { type: 'image', minutesAgo: 18 },
+    { type: 'video', minutesAgo: 60 * 5 },
+    { type: 'image', minutesAgo: 60 * 26 },
+    { type: 'image', minutesAgo: 60 * 49 },
+    { type: 'video', minutesAgo: 60 * 24 * 2 },
+    { type: 'image', minutesAgo: 60 * 24 * 3 },
+    { type: 'image', minutesAgo: 60 * 24 * 5 },
+    { type: 'image', minutesAgo: 60 * 24 * 8 },
+    { type: 'image', minutesAgo: 60 * 24 * 12 },
+    { type: 'image', minutesAgo: 60 * 24 * 20 },
+  ]
+  spots.forEach((s, i) => {
+    const base = { id: `al_${petId}_${i}`, petId, createdAt: now - s.minutesAgo * MIN }
+    if (s.type === 'video') {
+      albumMedia.push({
+        ...base,
+        type: 'video',
+        url: '',
+        poster: videoPosterOf(`${petName} 视频 ${i}`, pick(postImagePalette)),
+        duration: 12 + ((i * 17) % 60),
+      })
+    } else {
+      albumMedia.push({
+        ...base,
+        type: 'image',
+        url: postImageOf(`${petName} 照片 ${i}`, pick(postImagePalette)),
+      })
+    }
+  })
+})
+
+/** 某宠物的相册媒体（排除已进回收站），按时间倒序 */
+export function albumMediaOf(petId: string): AlbumMedia[] {
+  return albumMedia
+    .filter((m) => m.petId === petId && !m.deletedAt)
+    .sort((a, b) => b.createdAt - a.createdAt)
+}
+
+export function findAlbumMediaById(id: string): AlbumMedia | undefined {
+  return albumMedia.find((m) => m.id === id)
+}
+
+/** 回收站：这些宠物下已软删除的相册媒体，按删除时间倒序 */
+export function albumTrashOf(petIds: string[]): AlbumMedia[] {
+  return albumMedia
+    .filter((m) => petIds.includes(m.petId) && m.deletedAt)
+    .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
+}
+
+const ALBUM_TRASH_TTL = 30 * 86400000
+
+/** 惰性清理：移除回收站中删除已超过 1 个月的媒体 */
+export function purgeExpiredAlbumTrash(): void {
+  const now = Date.now()
+  for (let i = albumMedia.length - 1; i >= 0; i--) {
+    const m = albumMedia[i]
+    if (m.deletedAt && now - m.deletedAt > ALBUM_TRASH_TTL) albumMedia.splice(i, 1)
+  }
+}
 
 /* ============================================================
  * 系统管理（平台运营端）
