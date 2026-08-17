@@ -22,6 +22,14 @@ const pendingReports = ref<ReportJoined[]>([])
 const onlinePatients = ref<PatientRow[]>([])
 const loading = ref(false)
 
+/** 工作台快捷入口：原底部 Tab 的 4 个功能收拢为二级页 */
+const QUICK = [
+  { key: 'reports', labelKey: 'doctor.quick.reports', icon: '📋', color: '#e6faf8', path: '/doctor/reports' },
+  { key: 'telemetry', labelKey: 'doctor.quick.telemetry', icon: '📈', color: '#e8f0fe', path: '/doctor/telemetry' },
+  { key: 'ai', labelKey: 'doctor.quick.ai', icon: '💡', color: '#fff3e0', path: '/doctor/ai-analysis' },
+  { key: 'bi', labelKey: 'doctor.quick.bi', icon: '📊', color: '#f3e8ff', path: '/doctor/bi' },
+]
+
 async function load() {
   loading.value = true
   try {
@@ -54,6 +62,14 @@ onMounted(load)
       <div class="welcome">
         <div class="welcome-title">{{ t('doctor.dashboard.welcomeMorning', { name: auth.user?.name ?? t('role.doctor') }) }}</div>
         <div class="welcome-sub">{{ t('doctor.dashboard.welcomeSub', { pending: stats.pending, abnormal: stats.abnormal }) }}</div>
+      </div>
+
+      <!-- 功能快捷入口 2×2 -->
+      <div class="quick-grid">
+        <div v-for="q in QUICK" :key="q.key" class="quick-card sp-card" @click="router.push(q.path)">
+          <div class="quick-icon" :style="{ background: q.color }">{{ q.icon }}</div>
+          <div class="quick-label">{{ t(q.labelKey) }}</div>
+        </div>
       </div>
 
       <!-- 统计卡片 2×2 -->
@@ -145,6 +161,34 @@ onMounted(load)
     margin-top: 4px;
     font-size: 12px;
     color: var(--sp-text-secondary);
+  }
+}
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+  .quick-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 4px;
+    cursor: pointer;
+    .quick-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    .quick-label {
+      font-size: 12px;
+      color: var(--sp-text-secondary);
+      white-space: nowrap;
+    }
   }
 }
 .stat-grid {

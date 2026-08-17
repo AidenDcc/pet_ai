@@ -205,6 +205,18 @@ defineMock([
         .sort((a, b) => b.pushedAt - a.pushedAt)
     },
   },
+  // 医生端：当前登录医生档案（医院 / 职称 / 擅长 / 评分 / 接诊统计）
+  // 注意：需放在 /doctor/:id 之前，避免 :id 吞掉静态路径
+  {
+    method: 'get',
+    path: '/doctor/me',
+    handler: (ctx) => {
+      const user = requireRole(ctx, 'doctor')
+      const vet = findVetByUserId(user.id)
+      if (!vet) throw new MockError('未找到医生档案', 404)
+      return vet
+    },
+  },
   // 医生详情（基本信息 + 评分 + 宠主评价）
   // 注意：需放在 /doctor/consultations 之后，避免 :id 吞掉静态路径
   {

@@ -163,5 +163,27 @@ declare global {
     open(map: Map, pos?: [number, number]): void
     close(): void
   }
+
+  /** 热力图选项 */
+  interface HeatMapOptions {
+    radius?: number
+    opacity?: number | [number, number]
+    gradient?: Record<number, string>
+    zIndex?: number
+    zooms?: [number, number]
+    visible?: boolean
+  }
+
+  /** 热力图（需先通过 AMap.plugin('AMap.HeatMap') 加载） */
+  class HeatMap {
+    constructor(map: Map, opts?: HeatMapOptions)
+    setMap(map: Map | null): void
+    setDataSet(dataSet: { data: { lng: number; lat: number; count: number }[]; max?: number; min?: number }): void
+    hide(): void
+    show(): void
+  }
+
+  /** 加载插件 */
+  function plugin(names: string | string[], callback?: () => void): void
 }
 }

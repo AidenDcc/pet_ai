@@ -15,6 +15,8 @@ const props = withDefaults(
     radius?: number
     showFence?: boolean
     showTrack?: boolean
+    /** 热力图模式：以热力图展示点位密度（多日轨迹），替代折线 + 点标记 */
+    heatmap?: boolean
     fences?: PetFence[]
     fullscreen?: boolean
     /** 选中心点模式：点击地图触发 pick-center */
@@ -28,6 +30,7 @@ const props = withDefaults(
     radius: 500,
     showFence: true,
     showTrack: true,
+    heatmap: false,
     fences: () => [],
     fullscreen: false,
     pickMode: false,
@@ -46,6 +49,7 @@ const mapReady = ref(false)
 const loadError = ref('')
 let map: AMap.Map | null = null
 let trackLine: AMap.Polyline | null = null
+let heatmapOverlay: AMap.HeatMap | null = null
 let fenceCircle: AMap.Circle | null = null
 let petMarker: AMap.Marker | null = null
 let trackMarkers: AMap.Marker[] = []
@@ -196,6 +200,7 @@ function updatePickMarker() {
 
 function clearOverlays() {
   if (trackLine) { trackLine.setMap(null); trackLine = null }
+  if (heatmapOverlay) { heatmapOverlay.setMap(null); heatmapOverlay = null }
   if (fenceCircle) { fenceCircle.setMap(null); fenceCircle = null }
   if (petMarker) { petMarker.setMap(null); petMarker = null }
   if (pickMarkerOverlay) { pickMarkerOverlay.setMap(null); pickMarkerOverlay = null }
@@ -205,12 +210,56 @@ function clearOverlays() {
   fenceOverlays = []
 }
 
+/** 热力图插件懒加载（复用同一次加载结果，避免重复注册） */
+let heatmapReady = false
+function loadHeatmapPlugin(): Promise<void> {
+  if (heatmapReady) return Promise.resolve()
+  return new Promise((resolve) => {
+    AMap.plugin('AMap.HeatMap', () => {
+      heatmapReady = true
+      resolve()
+    })
+  })
+}
+
+/** 以热力图渲染全部点位（多日轨迹点位较多，展示停留密度） */
+async function drawHeatmap() {
+  if (!map || props.points.length === 0) return
+  await loadHeatmapPlugin()
+  if (!map) return
+  if (heatmapOverlay) {
+    heatmapOverlay.setMap(null)
+    heatmapOverlay = null
+  }
+  heatmapOverlay = new AMap.HeatMap(map, {
+    radius: 30,
+    opacity: [0, 0.85],
+    gradient: {
+      0.4: '#13B06A',
+      0.6: '#EBF04E',
+      0.7: '#F08700',
+      0.8: '#DE2626',
+      0.9: '#7B0D0D',
+    },
+  })
+  heatmapOverlay.setDataSet({
+    data: props.points.map((p) => ({ lng: p.lng, lat: p.lat, count: 1 })),
+    // 权重上限随点位数缩放，避免 3 天/7 天因点量不同导致热力过淡或过饱和
+    max: Math.max(20, Math.round(props.points.length / 8)),
+  })
+}
+
 function drawAll() {
   if (!map) return
   clearOverlays()
 
+  // 热力图模式：多日点位走密度展示，不画折线/点标记
+  if (props.heatmap) {
+    drawHeatmap()
+  }
+
   // 轨迹折线
-  if (props.showTrack && props.points.length > 1) {
+  if (!props.heatmap && props.showTrack && props.points.length > 1) {
     const path = props.points.map((p) => [p.lng, p.lat] as [number, number])
     trackLine = new AMap.Polyline({
       path,
@@ -316,7 +365,7 @@ function drawAll() {
 function fitView() {
   if (!map) return
   const all: [number, number][] = []
-  if (props.showTrack) props.points.forEach((p) => all.push([p.lng, p.lat]))
+  if (props.showTrack || props.heatmap) props.points.forEach((p) => all.push([p.lng, p.lat]))
   if (props.showFence && props.center) all.push([props.center.lng, props.center.lat])
   props.fences.forEach((f) => {
     if (f.enabled || props.showFence) all.push([f.center.lng, f.center.lat])
@@ -352,7 +401,7 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => [props.points, props.center, props.radius, props.showFence, props.showTrack, props.fences],
+  () => [props.points, props.center, props.radius, props.showFence, props.showTrack, props.heatmap, props.fences],
   () => {
     if (mapReady.value) drawAll()
   },

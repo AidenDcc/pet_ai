@@ -44,6 +44,11 @@ export function getDoctorDetailApi(id: string) {
   return request.get<unknown, VetInfo>(`/doctor/${id}`)
 }
 
+/** 医生端：当前登录医生的档案（医院 / 职称 / 擅长 / 评分 / 接诊统计） */
+export function getDoctorMeApi() {
+  return request.get<unknown, VetInfo>('/doctor/me')
+}
+
 /** 宠物主提交咨询（内容 / 图片 / 体征与运动快照） */
 export function pushConsultationApi(data: {
   petId: string

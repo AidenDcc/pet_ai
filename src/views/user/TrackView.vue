@@ -98,6 +98,15 @@ const distanceMeters = computed(() => {
   return Math.round(sum)
 })
 
+/** 是否跨多日：跨天区间定位点较多，改用热力图；单日直接显示轨迹 */
+const isMultiDay = computed(() => {
+  if (!from.value || !to.value) return false
+  return dayjs(to.value).startOf('day').diff(dayjs(from.value).startOf('day'), 'day') >= 1
+})
+
+/** 传给地图的点：单日抽稀画轨迹，多日用全量点渲染热力图 */
+const mapPoints = computed(() => (isMultiDay.value ? points.value : displayPoints.value))
+
 const isNow = (ts: number) => Date.now() - ts < 60000
 
 /** 所选时间区间文本（结束时间接近现在时显示「现在」） */
@@ -141,7 +150,8 @@ onMounted(loadBase)
 <template>
   <div class="track-page">
     <Amap
-      :points="displayPoints"
+      :points="mapPoints"
+      :heatmap="isMultiDay"
       :show-fence="false"
       :center="null"
       fullscreen
