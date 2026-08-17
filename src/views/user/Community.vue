@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showToast } from 'vant'
+import { useAuthStore } from '@/stores/auth'
 import {
   getCommunityFeedApi,
   toggleCommunityFollowApi,
@@ -12,6 +13,7 @@ import {
 import { relativeTime } from '@/utils/format'
 
 const router = useRouter()
+const auth = useAuthStore()
 const { t } = useI18n()
 
 const tab = ref(0) // 0=宠物圈 1=关注萌宠
@@ -94,6 +96,32 @@ function goBrowseAll() {
   tab.value = 0
   resetAndLoad()
 }
+
+function goShare() {
+  router.push('/user/community/compose')
+}
+
+function isSelf(post: PostJoined): boolean {
+  return post.authorId === auth.user?.id
+}
+
+/** 关联数据图标 */
+const attachmentIcon: Record<string, string> = {
+  report: 'notes-o',
+  track: 'location-o',
+  vitals: 'chart-trending-o',
+  exercise: 'logistics',
+}
+
+function attachmentLabel(type: string): string {
+  const keyMap: Record<string, string> = {
+    report: 'user.community.attachReport',
+    track: 'user.community.attachTrack',
+    vitals: 'user.community.attachVitals',
+    exercise: 'user.community.attachExercise',
+  }
+  return keyMap[type] ? t(keyMap[type]) : ''
+}
 </script>
 
 <template>
@@ -134,6 +162,7 @@ function goBrowseAll() {
               <div class="post-time">{{ relativeTime(post.createdAt) }}</div>
             </div>
             <van-button
+              v-if="!isSelf(post)"
               size="mini"
               round
               :plain="true"
@@ -148,6 +177,13 @@ function goBrowseAll() {
           <!-- 发布文案 -->
           <div class="post-caption">{{ post.caption }}</div>
 
+          <!-- 视频（单个） -->
+          <div v-if="post.video" class="post-video">
+            <img v-if="post.video.poster" :src="post.video.poster" class="post-video-img" alt="" />
+            <div v-else class="post-video-img post-video-img--placeholder"></div>
+            <span class="post-video-play"><van-icon name="play" color="#fff" /></span>
+          </div>
+
           <!-- 图片行：最多 3 张，第 3 张显示剩余张数浮层 -->
           <div v-if="post.images.length" class="post-images">
             <div
@@ -160,6 +196,14 @@ function goBrowseAll() {
               <span v-if="post.images.length > 3 && i === 2" class="img-more">
                 {{ t('user.community.moreImages', { n: post.images.length - 3 }) }}
               </span>
+            </div>
+          </div>
+
+          <!-- 关联数据标签 -->
+          <div v-if="post.attachments?.length" class="post-attachments">
+            <div v-for="a in post.attachments" :key="a.type" class="attach-chip">
+              <van-icon :name="attachmentIcon[a.type]" />
+              <span>{{ attachmentLabel(a.type) }}</span>
             </div>
           </div>
 
@@ -184,16 +228,43 @@ function goBrowseAll() {
         </van-button>
       </van-empty>
     </div>
+
+    <!-- 右下角悬浮「分享」按钮：固定不随列表滚动 -->
+    <button class="share-fab" type="button" @click="goShare">
+      <van-icon name="plus" size="18" />
+      <span>{{ t('user.community.share') }}</span>
+    </button>
   </div>
 </template>
 
 <style scoped lang="scss">
 .community {
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--sp-bg);
+}
+
+/* 右下角悬浮「分享」按钮：绝对定位在容器内，不随列表滚动 */
+.share-fab {
+  position: absolute;
+  right: 16px;
+  bottom: 24px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #ff8c42 0%, #ff6b00 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(255, 107, 0, 0.4);
+  cursor: pointer;
 }
 
 .community-tabs {
@@ -253,6 +324,59 @@ function goBrowseAll() {
   font-size: 14px;
   line-height: 1.6;
   color: #333;
+}
+
+/* 视频缩略图 */
+.post-video {
+  position: relative;
+  margin-top: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+
+  .post-video-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+
+    &--placeholder {
+      background: #333;
+    }
+  }
+
+  .post-video-play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* 关联数据标签 */
+.post-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+
+  .attach-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #fff3e6;
+    color: #ff6b00;
+    font-size: 12px;
+  }
 }
 
 .post-images {

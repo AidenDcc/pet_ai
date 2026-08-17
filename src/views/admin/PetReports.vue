@@ -14,6 +14,9 @@ const { t } = useI18n()
 const DAY = 86400000
 
 const list = ref<ReportJoined[]>([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(10)
 const loading = ref(false)
 
 // 宠物筛选
@@ -56,7 +59,13 @@ function resolveRange(): { startAt: number; endAt: number; timeRange: 'day' | 'w
 async function load() {
   loading.value = true
   try {
-    list.value = await getAdminReportsApi(filterPetId.value ? { petId: filterPetId.value } : undefined)
+    const res = await getAdminReportsApi({
+      page: page.value,
+      pageSize: pageSize.value,
+      petId: filterPetId.value || undefined,
+    })
+    list.value = res.list
+    total.value = res.total
   } catch (e) {
     ElMessage.error((e as Error).message || t('common.loadFailed'))
   } finally {
@@ -70,6 +79,7 @@ async function loadPets() {
 }
 
 function onFilterChange() {
+  page.value = 1
   load()
 }
 
@@ -202,6 +212,19 @@ onMounted(() => {
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pager">
+        <el-pagination
+          v-model:current-page="page"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          background
+          @current-change="load"
+          @size-change="onFilterChange"
+        />
+      </div>
     </el-card>
 
     <el-dialog v-model="genVisible" :title="t('admin.petReports.generate')" width="460px" destroy-on-close>
@@ -254,6 +277,11 @@ onMounted(() => {
 }
 .spacer {
   flex: 1;
+}
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 .opt-main {
   min-width: 0;

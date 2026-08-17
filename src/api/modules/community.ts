@@ -1,5 +1,14 @@
 import request from '../request'
-import type { CommunityComment, CommunityPost, PageQuery, PageResult } from '@/types'
+import type {
+  CommunityComment,
+  CommunityPost,
+  PageQuery,
+  PageResult,
+  PostStatus,
+  PostVisibility,
+  PostVideo,
+  PostAttachment,
+} from '@/types'
 
 export interface PostJoined extends CommunityPost {
   authorName: string
@@ -46,4 +55,40 @@ export function toggleCommunityLikeApi(postId: string) {
 /** 发表评论 */
 export function addCommunityCommentApi(postId: string, content: string) {
   return request.post<unknown, CommunityCommentJoined>('/community/comment', { postId, content })
+}
+
+/** 发布 / 保存草稿载荷 */
+export interface CommunityPostPayload {
+  /** 关联宠物（可选） */
+  petId?: string
+  caption: string
+  images?: string[]
+  video?: PostVideo
+  attachments?: PostAttachment[]
+  status: PostStatus
+}
+
+/** 发布新帖子（或保存草稿） */
+export function createCommunityPostApi(data: CommunityPostPayload) {
+  return request.post<unknown, PostJoined>('/community/post', data)
+}
+
+/** 编辑帖子（继续编辑草稿后保存 / 发布） */
+export function updateCommunityPostApi(id: string, data: CommunityPostPayload) {
+  return request.put<unknown, PostJoined>(`/community/post/${id}`, data)
+}
+
+/** 我的发布：当前用户全部帖子（草稿 + 已发布） */
+export function getMyPostsApi() {
+  return request.get<unknown, PostJoined[]>('/community/my-posts')
+}
+
+/** 切换帖子可见性（仅已发布） */
+export function toggleCommunityPostVisibilityApi(id: string) {
+  return request.post<unknown, { visibility: PostVisibility }>(`/community/post/${id}/visibility`)
+}
+
+/** 删除帖子（草稿 / 已发布均可） */
+export function deleteCommunityPostApi(id: string) {
+  return request.delete<unknown, { ok: boolean }>(`/community/post/${id}`)
 }

@@ -1,5 +1,5 @@
 import request from '../request'
-import type { ReportItem, ReportTrend } from '@/types'
+import type { ReportItem, ReportTrend, PageQuery, PageResult } from '@/types'
 
 export interface ReportJoined extends ReportItem {
   petName: string
@@ -59,9 +59,9 @@ export function getAllReportsApi() {
   return request.get<unknown, ReportJoined[]>('/report/all')
 }
 
-/** 运营端：平台全部宠物的历史健康报告（可按宠物过滤） */
-export function getAdminReportsApi(params?: { petId?: string }) {
-  return request.get<unknown, ReportJoined[]>('/admin/reports', { params })
+/** 运营端：平台全部宠物的历史健康报告（可按宠物过滤、分页） */
+export function getAdminReportsApi(params?: Partial<PageQuery> & { petId?: string }) {
+  return request.get<unknown, PageResult<ReportJoined>>('/admin/reports', { params })
 }
 
 export function reviewReportApi(id: string, data: { action: 'approve' | 'reject'; comment?: string }) {

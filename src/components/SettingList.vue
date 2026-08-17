@@ -21,11 +21,13 @@ export interface SettingItem {
 
 defineProps({
   items: { type: Array as PropType<SettingItem[]>, required: true },
+  /** 主题：user=宠物端（暖橙），doctor=医生端（青绿） */
+  theme: { type: String as PropType<'user' | 'doctor'>, default: 'user' },
 })
 </script>
 
 <template>
-  <div class="setting-list">
+  <div class="setting-list" :class="`setting-list--${theme}`">
     <div
       v-for="item in items"
       :key="item.key"
@@ -49,6 +51,23 @@ defineProps({
 <style scoped lang="scss">
 /* 设置列表：白色圆角卡，风格与「我的」页 .me-menu 一致 */
 .setting-list {
+  /* 主题变量（默认宠物端暖橙，医生端青绿通过 --doctor 覆盖） */
+  --sl-icon-bg: #fff6df;
+  --sl-icon-color: #e8a21c;
+  --sl-label: #2b2b2b;
+  --sl-border: #f5efdf;
+  --sl-right: #8a7a5a;
+  --sl-arrow: #c9b98f;
+
+  &--doctor {
+    --sl-icon-bg: #e0f5f2;
+    --sl-icon-color: #00b4a6;
+    --sl-label: #14403c;
+    --sl-border: #e6f2f0;
+    --sl-right: #5e8580;
+    --sl-arrow: #a0b8b4;
+  }
+
   background: #fff;
   border-radius: 20px;
   margin: 14px 14px 0;
@@ -62,7 +81,7 @@ defineProps({
     cursor: pointer;
 
     & + & {
-      border-top: 1px solid #f5efdf;
+      border-top: 1px solid var(--sl-border);
     }
   }
 
@@ -70,8 +89,8 @@ defineProps({
     width: 36px;
     height: 36px;
     border-radius: 12px;
-    background: #fff6df;
-    color: #e8a21c;
+    background: var(--sl-icon-bg);
+    color: var(--sl-icon-color);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -86,7 +105,7 @@ defineProps({
     flex: 1;
     min-width: 0;
     font-size: 15px;
-    color: #2b2b2b;
+    color: var(--sl-label);
   }
 
   /* 危险操作（注销账号等）：图标与文字红色 */
@@ -109,12 +128,12 @@ defineProps({
   &__right {
     flex-shrink: 0;
     font-size: 13px;
-    color: #8a7a5a;
+    color: var(--sl-right);
   }
 
   &__arrow {
     flex-shrink: 0;
-    color: #c9b98f;
+    color: var(--sl-arrow);
     font-size: 14px;
   }
 }

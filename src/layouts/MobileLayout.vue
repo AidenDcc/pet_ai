@@ -16,6 +16,13 @@ const showTabbar = computed(() => route.meta.tabbar === true)
 const hideNavbar = computed(() => route.meta.hideNavbar === true)
 const title = computed(() => (route.meta.titleKey ? t(route.meta.titleKey as string) : 'ShuxinPet'))
 
+/** 医生端：无底部导航栏，子页面返回按钮旁附带「回首页」图标 */
+const isDoctor = computed(() => auth.role === 'doctor')
+
+function goHome() {
+  router.push({ name: 'doctor-dashboard' })
+}
+
 interface TabItem {
   key: string
   titleKey: string
@@ -32,15 +39,12 @@ const TAB_CONFIG: Record<Role, TabItem[]> = {
     { key: 'community', titleKey: 'nav.community', icon: 'circle-paw', routeName: 'user-community', match: ['/user/community'] },
     { key: 'me', titleKey: 'nav.me', icon: 'user-o', routeName: 'user-me', match: ['/user/me'] },
   ],
-  doctor: [
-    { key: 'dashboard', titleKey: 'nav.dashboard', icon: 'apps-o', routeName: 'doctor-dashboard', match: ['/doctor/dashboard'] },
-    { key: 'patients', titleKey: 'nav.patientPets', icon: 'friends-o', routeName: 'doctor-patients', match: ['/doctor/patients'] },
-    { key: 'me', titleKey: 'nav.me', icon: 'user-o', routeName: 'doctor-me', match: ['/doctor/me'] },
-  ],
+  // 医生端：无底部导航栏，仅一个工作台入口
+  doctor: [],
   admin: [],
 }
 
-const tabs = computed(() => TAB_CONFIG[auth.role as Role] ?? TAB_CONFIG.user)
+const tabs = computed(() => TAB_CONFIG[auth.role as Role] ?? [])
 
 const active = computed(() => {
   const path = route.path
@@ -59,6 +63,7 @@ function onTabChange(name: string | number) {
     <van-nav-bar v-if="!hideNavbar" :title="title">
       <template #left>
         <van-icon v-if="!showTabbar" name="arrow-left" size="18" @click="router.back()" />
+        <van-icon v-if="isDoctor && !showTabbar" name="home-o" size="18" class="nav-home" @click="goHome" />
       </template>
     </van-nav-bar>
     <div class="app-body" :class="{ 'app-body--fullscreen': hideNavbar }">
@@ -88,6 +93,11 @@ function onTabChange(name: string | number) {
 </template>
 
 <style scoped lang="scss">
+/* 医生端子页面返回按钮旁的「回首页」图标 */
+.nav-home {
+  margin-left: 10px;
+}
+
 /* 手机外壳内滚动区 */
 .app-body {
   flex: 1;

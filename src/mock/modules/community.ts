@@ -1,6 +1,13 @@
 import { defineMock, MockError, requireUser, filterByKeyword, paginate, uid } from '../helper'
-import { communityPosts, communityComments, communityFollows, communityLikes, findUserById, plans } from '../db'
-import type { CommunityComment, CommunityPost } from '@/types'
+import { communityPosts, communityComments, communityFollows, communityLikes, findUserById, findPetById, plans } from '../db'
+import type {
+  CommunityComment,
+  CommunityPost,
+  PostStatus,
+  PostVisibility,
+  PostVideo,
+  PostAttachment,
+} from '@/types'
 
 export interface PostJoined extends CommunityPost {
   authorName: string
@@ -36,6 +43,55 @@ function joinComment(c: CommunityComment): CommunityCommentJoined {
   return { ...c, authorName: author?.name ?? '未知用户', authorAvatar: author?.avatar ?? '' }
 }
 
+/** 发布 / 更新帖子载荷（草稿与发布共用） */
+export interface PostPayload {
+  petId?: string
+  caption?: string
+  images?: string[]
+  video?: PostVideo
+  attachments?: PostAttachment[]
+  status?: PostStatus
+}
+
+/** 校验并规范化载荷，把内容写回目标帖子（新建 / 编辑共用） */
+function applyPostPayload(post: CommunityPost, body: PostPayload, user: ReturnType<typeof requireUser>) {
+  const caption = String(body.caption ?? '').trim()
+  const status: PostStatus = body.status === 'draft' ? 'draft' : 'published'
+  const images = (body.images ?? []).filter(Boolean)
+  const hasContent = caption || images.length || body.video?.url || body.video?.poster || body.attachments?.length
+  if (status === 'published' && !caption) throw new MockError('请先输入分享内容')
+  if (!hasContent) throw new MockError('内容为空，无法保存')
+
+  // 关联宠物（可选）：校验归属并回填宠物名
+  let petId: string | undefined
+  let petName = ''
+  if (body.petId) {
+    const pet = findPetById(body.petId)
+    if (!pet) throw new MockError('宠物不存在', 404)
+    if (pet.ownerId !== user.id) throw new MockError('无权关联该宠物', 403)
+    petId = pet.id
+    petName = pet.name
+  }
+
+  post.petId = petId
+  post.petName = petName
+  post.caption = caption
+  post.images = images
+  post.video = body.video
+  post.attachments = body.attachments
+  post.status = status
+  // 发布时对外可见（隐藏由「我的发布」页单独切换）
+  if (status === 'published' && post.visibility !== 'hidden') post.visibility = 'visible'
+}
+
+/** 校验帖子归属当前用户，返回该帖子 */
+function requireOwnPost(ctx: { params: Record<string, string> }, user: ReturnType<typeof requireUser>): CommunityPost {
+  const post = communityPosts.find((p) => p.id === ctx.params.id)
+  if (!post) throw new MockError('帖子不存在', 404)
+  if (post.authorId !== user.id) throw new MockError('无权操作该帖子', 403)
+  return post
+}
+
 defineMock([
   {
     method: 'get',
@@ -49,8 +105,8 @@ defineMock([
         keyword?: string
       }
       let list = communityPosts
-        // 不展示当前用户自己的帖子
-        .filter((p) => p.authorId !== user.id)
+        // 仅展示已发布且对外可见的帖子（草稿 / 隐藏帖不出现在宠圈）
+        .filter((p) => p.status === 'published' && p.visibility === 'visible')
         // "关注萌宠"仅展示已关注作者的帖子
         .filter(
           (p) =>
@@ -133,6 +189,84 @@ defineMock([
       communityComments.push(c)
       post.commentCount += 1
       return joinComment(c)
+    },
+  },
+  // 发布新帖子（或保存草稿）
+  {
+    method: 'post',
+    path: '/community/post',
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      const body = (ctx.body ?? {}) as PostPayload
+      const post: CommunityPost = {
+        id: uid('post'),
+        authorId: user.id,
+        petName: '',
+        caption: '',
+        images: [],
+        viewCount: 0,
+        likeCount: 0,
+        commentCount: 0,
+        createdAt: Date.now(),
+        status: 'published',
+        visibility: 'visible',
+      }
+      applyPostPayload(post, body, user)
+      communityPosts.unshift(post)
+      return joinPost(post, user.id)
+    },
+  },
+  // 编辑帖子（继续编辑草稿后保存 / 发布）
+  {
+    method: 'put',
+    path: '/community/post/:id',
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      const post = requireOwnPost(ctx, user)
+      applyPostPayload(post, (ctx.body ?? {}) as PostPayload, user)
+      return joinPost(post, user.id)
+    },
+  },
+  // 我的发布：当前用户的全部帖子（草稿 + 已发布，含可见性）
+  {
+    method: 'get',
+    path: '/community/my-posts',
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      return communityPosts
+        .filter((p) => p.authorId === user.id)
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .map((p) => joinPost(p, user.id))
+    },
+  },
+  // 切换帖子可见性（仅已发布帖子）
+  {
+    method: 'post',
+    path: '/community/post/:id/visibility',
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      const post = requireOwnPost(ctx, user)
+      if (post.status !== 'published') throw new MockError('草稿暂不支持设置可见性')
+      post.visibility = post.visibility === 'visible' ? 'hidden' : 'visible'
+      return { visibility: post.visibility as PostVisibility }
+    },
+  },
+  // 删除帖子（草稿 / 已发布均可，同时清理点赞与评论）
+  {
+    method: 'delete',
+    path: '/community/post/:id',
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      const post = requireOwnPost(ctx, user)
+      const idx = communityPosts.indexOf(post)
+      if (idx >= 0) communityPosts.splice(idx, 1)
+      for (let i = communityLikes.length - 1; i >= 0; i--) {
+        if (communityLikes[i].postId === post.id) communityLikes.splice(i, 1)
+      }
+      for (let i = communityComments.length - 1; i >= 0; i--) {
+        if (communityComments[i].postId === post.id) communityComments.splice(i, 1)
+      }
+      return { ok: true }
     },
   },
 ])

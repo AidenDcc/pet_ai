@@ -37,26 +37,36 @@ export function defineMock(routeList: MockRoute[]): void {
   routes.push(...routeList)
 }
 
-/** 按 method + path 模板匹配路由，支持 :param */
+/** 按 method + path 模板匹配路由，支持 :param。静态段更多的路由优先，避免 :id 吞掉静态路径（如 /doctor/:id vs /doctor/bi）。 */
 export function resolveMock(method: string, url: string): { handler: MockHandler; params: Record<string, string> } | null {
   const segs = url.split('/').filter(Boolean)
+  let best: { handler: MockHandler; params: Record<string, string> } | null = null
+  let bestStatic = -1
   for (const r of routes) {
     if (r.method !== method) continue
     const rsegs = r.path.split('/').filter(Boolean)
     if (rsegs.length !== segs.length) continue
     const params: Record<string, string> = {}
     let matched = true
+    let staticCount = 0
     for (let i = 0; i < rsegs.length; i++) {
       if (rsegs[i].startsWith(':')) {
         params[rsegs[i].slice(1)] = decodeURIComponent(segs[i])
-      } else if (rsegs[i] !== segs[i]) {
-        matched = false
-        break
+      } else {
+        staticCount += 1
+        if (rsegs[i] !== segs[i]) {
+          matched = false
+          break
+        }
       }
     }
-    if (matched) return { handler: r.handler, params }
+    if (!matched) continue
+    if (staticCount > bestStatic) {
+      best = { handler: r.handler, params }
+      bestStatic = staticCount
+    }
   }
-  return null
+  return best
 }
 
 export function sleep(ms: number): Promise<void> {

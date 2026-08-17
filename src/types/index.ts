@@ -749,6 +749,33 @@ export interface I18nEntry {
  * 宠屋（宠物社区）
  * ============================================================ */
 
+/** 帖子状态：草稿 / 已发布 */
+export type PostStatus = 'draft' | 'published'
+
+/** 帖子可见性：对外可见 / 对外隐藏（仅已发布帖子生效） */
+export type PostVisibility = 'visible' | 'hidden'
+
+/** 帖子可关联的数据类型：健康报告 / 运动轨迹 / 体征数据 / 运动数据 */
+export type PostAttachmentType = 'report' | 'track' | 'vitals' | 'exercise'
+
+/** 帖子视频（单个） */
+export interface PostVideo {
+  url: string
+  poster?: string
+  duration?: number
+}
+
+/** 帖子关联的宠物健康数据（健康报告 / 轨迹 / 体征 / 运动） */
+export interface PostAttachment {
+  type: PostAttachmentType
+  petId: string
+  petName: string
+  title: string
+  summary: string
+  /** 关联对象 id（如报告 id） */
+  refId?: string
+}
+
 /** 社区帖子（作者/会员信息由 join 注入） */
 export interface CommunityPost {
   id: string
@@ -760,6 +787,16 @@ export interface CommunityPost {
   likeCount: number
   commentCount: number
   createdAt: number
+  /** 状态：draft 草稿 / published 已发布 */
+  status: PostStatus
+  /** 可见性（仅已发布生效）：visible 对外可见 / hidden 对外隐藏 */
+  visibility: PostVisibility
+  /** 关联宠物（可选，不关联则为空） */
+  petId?: string
+  /** 单个视频（可选） */
+  video?: PostVideo
+  /** 关联的宠物健康数据（可选） */
+  attachments?: PostAttachment[]
 }
 
 /** 社区评论 */
@@ -775,8 +812,8 @@ export interface CommunityComment {
  * 消息中心（宠物主端）
  * ============================================================ */
 
-/** 消息分类：健康消息 / 宠圈消息 / 系统消息 */
-export type MessageCategory = 'health' | 'community' | 'system'
+/** 消息分类：健康消息 / 宠圈消息 / 系统消息 / 问诊消息（医生端） */
+export type MessageCategory = 'health' | 'community' | 'system' | 'consultation'
 
 /** 消息附带的宠物体征信息 */
 export interface MessagePetVitals {
@@ -817,6 +854,7 @@ export interface MessageUnread {
   health: number
   community: number
   system: number
+  consultation: number
 }
 
 /* ============================================================

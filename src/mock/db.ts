@@ -1374,7 +1374,7 @@ interface PostSeed {
 }
 
 const POST_SEEDS: PostSeed[] = [
-  // 林悦自己的帖子（feed 中应被排除，用于验证排除逻辑）
+  // 林悦自己的帖子（已发布、可见，展示在宠物圈；可在「我的发布」中管理可见性/删除）
   { authorId: 'u1', petName: '布丁', caption: '布丁今天的柯基拖地舞，笑死我了 🐶', imageCount: 4, views: 320, likes: 45, comments: 8, minutesAgo: 25 },
   { authorId: 'u1', petName: '雪球', caption: '布偶猫的午后时光，软成一滩水', imageCount: 3, views: 560, likes: 80, comments: 12, minutesAgo: 60 * 28 },
   // u5（林悦已关注，出现在"关注萌宠"）
@@ -1409,6 +1409,8 @@ POST_SEEDS.forEach((s, i) => {
     likeCount: s.likes,
     commentCount: s.comments,
     createdAt: Date.now() - s.minutesAgo * 60000,
+    status: 'published',
+    visibility: 'visible',
   })
 })
 
@@ -1596,6 +1598,98 @@ MESSAGE_SEEDS.forEach((s, i) => {
   })
 })
 
+/* ---- 医生端消息（问诊消息 / 系统消息）---- */
+const demoDoctor = users.find((u) => u.account === 'doctor')
+if (demoDoctor) {
+  const DOCTOR_MESSAGE_SEEDS: MessageSeed[] = [
+    {
+      category: 'consultation',
+      title: '收到新的问诊请求',
+      sender: '布丁妈妈 · 林悦',
+      summary: '宠物「布丁」出现腹泻，主人已提交问诊，请尽快查看并回复。',
+      content:
+        '陈医生，您好！\n\n宠物主林悦为「布丁」（柯基）提交了新的问诊：\n· 症状：近两日食欲不振，伴轻微腹泻\n· 主诉：需咨询是否需要调整饮食或就医\n\n问诊附带体征与运动快照，请在「在线问诊」中查看详情并及时回复。',
+      imageCount: 0,
+      unread: true,
+      minutesAgo: 18,
+    },
+    {
+      category: 'consultation',
+      title: '问诊宠物体征提醒',
+      sender: '数心智能健康中心',
+      summary: '监护宠物「雪球」心率出现一过性升高，建议结合问诊记录综合判断。',
+      content:
+        '您监护的「雪球」（布偶猫）在 15:40 出现一过性心率升高（峰值 172 次/分），持续约 2 分钟后自行恢复。\n\n该宠物近期有活跃问诊记录，建议您在回复问诊时结合本次体征波动综合评估。',
+      imageCount: 0,
+      unread: true,
+      minutesAgo: 60 * 2,
+    },
+    {
+      category: 'consultation',
+      title: '问诊已到期提醒',
+      sender: '数心智能健康中心',
+      summary: '您有一条问诊超过 24 小时未回复，请及时处理以免影响接诊率。',
+      content:
+        '宠物主「豆豆妈妈」发起的问诊已超过 24 小时未回复。\n\n为保障宠物健康与您的接诊评价，请尽快前往「在线问诊」查看并回复。',
+      imageCount: 0,
+      unread: false,
+      minutesAgo: 60 * 26,
+    },
+    {
+      category: 'system',
+      title: '执业证书年审提醒',
+      sender: '数心智能平台',
+      summary: '您的执业兽医师证书即将到期，请在 30 天内完成年审资料提交。',
+      content:
+        '陈思远医生，您好！\n\n系统提示您的《执业兽医师资格证书》（兽执业字第 2019-003-1527 号）即将到期。\n\n为保障医生资质正常展示与在线问诊接单，请及时在「个人中心」更新相关认证资料。',
+      imageCount: 0,
+      unread: true,
+      minutesAgo: 60 * 9,
+    },
+    {
+      category: 'system',
+      title: '平台接诊规范更新',
+      sender: '数心智能平台',
+      summary: '《线上问诊服务规范》已更新，新增远程处方与用药安全相关条款。',
+      content:
+        '为保障线上问诊服务质量，平台已更新《线上问诊服务规范》，重点新增远程处方资质审核、用药安全提醒等条款。\n\n请在接诊前阅读并遵守最新规范，共同守护宠物健康。',
+      imageCount: 0,
+      unread: false,
+      minutesAgo: 60 * 22,
+    },
+    {
+      category: 'system',
+      title: '欢迎加入数心智能医生端',
+      sender: '数心智能平台',
+      summary: '欢迎陈医生入驻，完善档案即可开始在线接诊与宠物监护服务。',
+      content:
+        '陈思远医生，欢迎入驻数心智能宠物平台医生端！\n\n您可以在工作台开启在线问诊、监护合作宠物、查看实时监测与数据统计。完善个人档案与执业信息后即可正式接诊。',
+      imageCount: 0,
+      unread: false,
+      minutesAgo: 60 * 24 * 3,
+    },
+  ]
+  DOCTOR_MESSAGE_SEEDS.forEach((s, i) => {
+    const images: string[] = []
+    for (let k = 0; k < s.imageCount; k++) {
+      images.push(postImageOf(`消息配图 ${k + 1}`, pick(postImagePalette)))
+    }
+    messages.push({
+      id: `dmsg${i + 1}`,
+      userId: demoDoctor.id,
+      category: s.category,
+      title: s.title,
+      sender: s.sender,
+      summary: s.summary,
+      content: s.content,
+      images,
+      petVitals: s.vitals,
+      readAt: s.unread ? null : Date.now() - s.minutesAgo * 60000,
+      createdAt: Date.now() - s.minutesAgo * 60000,
+    })
+  })
+}
+
 /** 某用户（可选分类）的消息，按发送时间倒序 */
 export function messagesOf(userId: string, category?: MessageItem['category']): MessageItem[] {
   return messages
@@ -1608,7 +1702,7 @@ export function findMessageById(id: string): MessageItem | undefined {
 }
 
 /** 各分类未读数（含总数） */
-export function unreadByCategory(userId: string): { total: number; health: number; community: number; system: number } {
+export function unreadByCategory(userId: string): { total: number; health: number; community: number; system: number; consultation: number } {
   const unread = messages.filter((m) => m.userId === userId && m.readAt === null)
   const countOf = (c: MessageItem['category']) => unread.filter((m) => m.category === c).length
   return {
@@ -1616,6 +1710,7 @@ export function unreadByCategory(userId: string): { total: number; health: numbe
     health: countOf('health'),
     community: countOf('community'),
     system: countOf('system'),
+    consultation: countOf('consultation'),
   }
 }
 

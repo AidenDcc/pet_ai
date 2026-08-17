@@ -1,53 +1,93 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
-import { getReviewListApi, type ReportJoined } from '@/api/modules/report'
-import { getDoctorPatientsApi, type PatientRow } from '@/api/modules/pet'
-import { DEVICE_STATUS, SPECIES_ICON, toVantTagType } from '@/utils/consts'
-import { petAvatarSrc } from '@/utils/petAvatar'
+import { getDoctorMeApi, getDoctorConsultationsApi } from '@/api/modules/consultation'
+import { getDoctorPatientsApi } from '@/api/modules/pet'
+import { getUnreadCountApi } from '@/api/modules/notification'
+import type { VetInfo } from '@/types'
+import personalAvatar from '@/asset/image/个人头像.png'
 
 const router = useRouter()
 const { t } = useI18n()
 const auth = useAuthStore()
 
-const stats = ref({
-  pending: 0,
-  online: 0,
-  patients: 0,
-  abnormal: 0,
-})
-const pendingReports = ref<ReportJoined[]>([])
-const onlinePatients = ref<PatientRow[]>([])
-const loading = ref(false)
+const vet = ref<VetInfo | null>(null)
+const unreadCount = ref(0)
+const pendingConsults = ref(0)
+const monitorCount = ref(0)
 
-/** 工作台快捷入口：原底部 Tab 的 4 个功能收拢为二级页 */
-const QUICK = [
-  { key: 'reports', labelKey: 'doctor.quick.reports', icon: '📋', color: '#e6faf8', path: '/doctor/reports' },
-  { key: 'telemetry', labelKey: 'doctor.quick.telemetry', icon: '📈', color: '#e8f0fe', path: '/doctor/telemetry' },
-  { key: 'ai', labelKey: 'doctor.quick.ai', icon: '💡', color: '#fff3e0', path: '/doctor/ai-analysis' },
-  { key: 'bi', labelKey: 'doctor.quick.bi', icon: '📊', color: '#f3e8ff', path: '/doctor/bi' },
-]
+/** 头像 / 姓名：优先医生档案，回退登录态用户 */
+const displayName = computed(() => vet.value?.name ?? auth.user?.name ?? t('role.doctor'))
+const displayAvatar = computed(() => vet.value?.avatar ?? auth.user?.avatar ?? personalAvatar)
+/** 机构与科室：安心宠物医院 · 内科 · 主任医师 */
+const orgLine = computed(() => {
+  if (!vet.value) return t('doctor.profile.noRecord')
+  const parts = [vet.value.hospital, vet.value.department, vet.value.title].filter(Boolean)
+  return parts.join(' · ')
+})
+const specialty = computed(() => vet.value?.specialty ?? '')
 
 async function load() {
-  loading.value = true
   try {
-    const [reviews, patientPage] = await Promise.all([
-      getReviewListApi(),
-      getDoctorPatientsApi({ page: 1, pageSize: 50 }),
+    const [me, consults, patientPage, unread] = await Promise.all([
+      getDoctorMeApi(),
+      getDoctorConsultationsApi(),
+      getDoctorPatientsApi({ page: 1, pageSize: 1 }),
+      getUnreadCountApi(),
     ])
-    pendingReports.value = reviews
-    onlinePatients.value = patientPage.list.filter((p) => p.device?.status === 'online')
-    stats.value = {
-      pending: reviews.length,
-      online: onlinePatients.value.length,
-      patients: patientPage.total,
-      abnormal: reviews.reduce((s, r) => s + r.abnormal.length, 0),
-    }
-  } finally {
-    loading.value = false
+    vet.value = me
+    pendingConsults.value = consults.filter((c) => c.replies.length === 0).length
+    monitorCount.value = patientPage.total
+    unreadCount.value = unread.total
+  } catch {
+    // 单个接口失败不阻塞整页，保留已加载的数据
   }
+}
+
+/** 工作台：在线问诊 / 监护宠物 / 统计分析 / 实时监测（每行 2 个） */
+const WORKBENCH = computed(() => [
+  {
+    key: 'consultation',
+    labelKey: 'doctor.workbench.consultation',
+    descKey: 'doctor.workbench.consultationDesc',
+    icon: '💬',
+    color: '#e0f5f2',
+    path: '/doctor/consultations',
+    badge: pendingConsults.value > 0 ? t('doctor.workbench.pending', { n: pendingConsults.value }) : '',
+  },
+  {
+    key: 'monitor',
+    labelKey: 'doctor.workbench.monitor',
+    descKey: 'doctor.workbench.monitorDesc',
+    icon: '🐾',
+    color: '#e8f0fe',
+    path: '/doctor/patients',
+    badge: monitorCount.value > 0 ? t('doctor.workbench.monitorCount', { n: monitorCount.value }) : '',
+  },
+  {
+    key: 'bi',
+    labelKey: 'doctor.workbench.bi',
+    descKey: 'doctor.workbench.biDesc',
+    icon: '📊',
+    color: '#f3e8ff',
+    path: '/doctor/bi',
+    badge: '',
+  },
+  {
+    key: 'telemetry',
+    labelKey: 'doctor.workbench.telemetry',
+    descKey: 'doctor.workbench.telemetryDesc',
+    icon: '📈',
+    color: '#fff3e0',
+    path: '/doctor/telemetry',
+    badge: '',
+  },
+])
+
+function go(path: string) {
+  router.push(path)
 }
 
 onMounted(load)
@@ -55,208 +95,238 @@ onMounted(load)
 
 <template>
   <div class="dashboard">
-    <van-skeleton :loading="loading" :row="6" class="mt-16" />
-
-    <template v-if="!loading">
-      <!-- 欢迎 -->
-      <div class="welcome">
-        <div class="welcome-title">{{ t('doctor.dashboard.welcomeMorning', { name: auth.user?.name ?? t('role.doctor') }) }}</div>
-        <div class="welcome-sub">{{ t('doctor.dashboard.welcomeSub', { pending: stats.pending, abnormal: stats.abnormal }) }}</div>
+    <!-- 顶部青色渐变头部：医生档案 + 右上角消息/设置 -->
+    <header class="dash-header">
+      <div class="dash-actions">
+        <button class="dash-action" type="button" aria-label="message" @click="go('/doctor/messages')">
+          <van-icon name="bell" />
+          <span v-if="unreadCount" class="dash-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+        </button>
+        <button class="dash-action" type="button" aria-label="settings" @click="go('/doctor/settings')">
+          <van-icon name="setting-o" />
+        </button>
       </div>
 
-      <!-- 功能快捷入口 2×2 -->
-      <div class="quick-grid">
-        <div v-for="q in QUICK" :key="q.key" class="quick-card sp-card" @click="router.push(q.path)">
-          <div class="quick-icon" :style="{ background: q.color }">{{ q.icon }}</div>
-          <div class="quick-label">{{ t(q.labelKey) }}</div>
+      <div class="dash-profile" @click="go('/doctor/profile')">
+        <van-image round width="68" height="68" :src="displayAvatar" class="dash-avatar" />
+        <div class="dash-user">
+          <div class="dash-name">
+            {{ displayName }}
+            <van-tag v-if="vet?.title" round plain color="#14403c" text-color="#14403c" class="dash-title-tag">
+              {{ vet.title }}
+            </van-tag>
+          </div>
+          <div class="dash-org">{{ orgLine }}</div>
+          <div v-if="specialty" class="dash-specialty">{{ t('doctor.profile.specialty') }}：{{ specialty }}</div>
         </div>
+        <van-icon name="arrow" class="dash-arrow" />
       </div>
+    </header>
 
-      <!-- 统计卡片 2×2 -->
-      <div class="stat-grid">
-        <div class="stat-card sp-card">
-          <div class="stat-icon" style="background: #fff3e0">📋</div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.pending }}</div>
-            <div class="stat-label">{{ t('doctor.dashboard.pendingReports') }}</div>
+    <!-- 工作台 -->
+    <section class="workbench">
+      <div class="workbench-title">{{ t('doctor.dashboard.title') }}</div>
+      <div class="workbench-grid">
+        <div
+          v-for="item in WORKBENCH"
+          :key="item.key"
+          class="wb-card sp-card"
+          @click="go(item.path)"
+        >
+          <div class="wb-icon" :style="{ background: item.color }">{{ item.icon }}</div>
+          <div class="wb-main">
+            <div class="wb-label">{{ t(item.labelKey) }}</div>
+            <div class="wb-desc">{{ t(item.descKey) }}</div>
           </div>
-        </div>
-        <div class="stat-card sp-card">
-          <div class="stat-icon" style="background: #e6faf8">🟢</div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.online }}</div>
-            <div class="stat-label">{{ t('doctor.dashboard.onlinePets') }}</div>
-          </div>
-        </div>
-        <div class="stat-card sp-card">
-          <div class="stat-icon" style="background: #e8f0fe">🐾</div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.patients }}</div>
-            <div class="stat-label">{{ t('doctor.dashboard.totalPatients') }}</div>
-          </div>
-        </div>
-        <div class="stat-card sp-card">
-          <div class="stat-icon" style="background: #ffe9e9">⚠️</div>
-          <div class="stat-info">
-            <div class="stat-value" style="color: #ff6b6b">{{ stats.abnormal }}</div>
-            <div class="stat-label">{{ t('doctor.dashboard.abnormalSignals') }}</div>
-          </div>
+          <span v-if="item.badge" class="wb-badge">{{ item.badge }}</span>
         </div>
       </div>
-
-      <!-- 待审核报告 -->
-      <div class="sp-card section">
-        <div class="card-head">
-          <span class="fw-600">{{ t('doctor.dashboard.pendingList') }}</span>
-          <span class="text-primary fs-12" @click="router.push('/doctor/reports')">{{ t('doctor.dashboard.viewAll') }} →</span>
-        </div>
-        <van-empty v-if="!pendingReports.length" :description="t('doctor.dashboard.noPendingReport')" />
-        <div v-for="r in pendingReports.slice(0, 6)" :key="r.id" class="row-item" @click="router.push('/doctor/reports')">
-          <van-image round width="36" height="36" :src="r.petAvatar" />
-          <div class="row-info">
-            <div class="row-name">
-              {{ r.petName }}
-              <span class="row-sub">{{ r.period }}</span>
-            </div>
-            <div class="row-desc ellipsis">{{ r.summary }}</div>
-          </div>
-          <van-tag round type="warning">{{ t('doctor.dashboard.pendingTag') }}</van-tag>
-        </div>
-      </div>
-
-      <!-- 在线监护 -->
-      <div class="sp-card section mt-16">
-        <div class="card-head">
-          <span class="fw-600">{{ t('doctor.dashboard.onlineList') }}</span>
-          <span class="text-primary fs-12" @click="router.push('/doctor/patients')">{{ t('doctor.patients.all') }} →</span>
-        </div>
-        <van-empty v-if="!onlinePatients.length" :description="t('doctor.dashboard.noOnlinePet')" />
-        <div v-for="p in onlinePatients.slice(0, 8)" :key="p.id" class="row-item" @click="router.push('/doctor/patients')">
-          <van-image round width="34" height="34" :src="petAvatarSrc(p.name) || p.avatar" />
-          <div class="row-info">
-            <div class="row-name">{{ SPECIES_ICON[p.species] }} {{ p.name }}</div>
-            <div class="row-desc">{{ p.breed }} · {{ p.owner?.name ?? '' }}</div>
-          </div>
-          <van-tag round :type="toVantTagType(DEVICE_STATUS[p.device?.status ?? 'offline'].tag)">
-            {{ t(DEVICE_STATUS[p.device?.status ?? 'offline'].labelKey) }}
-          </van-tag>
-        </div>
-      </div>
-    </template>
+    </section>
   </div>
 </template>
 
 <style scoped lang="scss">
 .dashboard {
-  padding: 16px 14px;
-  padding-top: 0;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  padding-bottom: 24px;
+  background: #eef7f6;
 }
-.welcome {
-  margin-bottom: 14px;
-  .welcome-title {
-    font-size: 18px;
-    font-weight: 700;
-  }
-  .welcome-sub {
-    margin-top: 4px;
-    font-size: 12px;
-    color: var(--sp-text-secondary);
-  }
+
+/* ---- 顶部青色渐变头部 ---- */
+.dash-header {
+  position: relative;
+  background: linear-gradient(165deg, #d6f5f1 0%, #7fdcd4 55%, #3ec6bb 100%);
+  border-radius: 0 0 28px 28px;
+  padding: 46px 18px 52px;
 }
-.quick-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 14px;
-  .quick-card {
+
+.dash-actions {
+  position: absolute;
+  top: 40px;
+  right: 16px;
+  display: flex;
+  gap: 14px;
+
+  .dash-action {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.55);
+    color: #14403c;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 14px 4px;
-    cursor: pointer;
-    .quick-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    justify-content: center;
+
+    .van-icon {
       font-size: 20px;
     }
-    .quick-label {
+  }
+
+  .dash-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #ff4d4f;
+    border: 1.5px solid #fff;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+}
+
+.dash-profile {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 40px;
+  cursor: pointer;
+
+  .dash-avatar {
+    flex-shrink: 0;
+    border: 3px solid #fff;
+    background: #e8f5e9;
+  }
+
+  .dash-user {
+    flex: 1;
+    min-width: 0;
+
+    .dash-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 21px;
+      font-weight: 800;
+      color: #14403c;
+
+      .dash-title-tag {
+        flex-shrink: 0;
+        font-size: 10px;
+      }
+    }
+
+    .dash-org {
+      margin-top: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1d6a63;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dash-specialty {
+      margin-top: 3px;
       font-size: 12px;
-      color: var(--sp-text-secondary);
+      color: #2c7c75;
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
   }
+
+  .dash-arrow {
+    flex-shrink: 0;
+    color: #2c7c75;
+  }
 }
-.stat-grid {
+
+/* ---- 工作台 ---- */
+.workbench {
+  position: relative;
+  z-index: 1;
+  margin: -28px 14px 0;
+}
+
+.workbench-title {
+  padding: 0 4px 10px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #14403c;
+}
+
+.workbench-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  .stat-card {
+}
+
+.wb-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  cursor: pointer;
+  position: relative;
+
+  .wb-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px;
-    .stat-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
+    justify-content: center;
+    font-size: 22px;
+  }
+
+  .wb-main {
+    min-width: 0;
+
+    .wb-label {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1f2d3d;
     }
-    .stat-value {
-      font-size: 22px;
-      font-weight: 800;
-      line-height: 1.1;
-    }
-    .stat-label {
-      margin-top: 2px;
+
+    .wb-desc {
+      margin-top: 3px;
       font-size: 12px;
       color: var(--sp-text-secondary);
     }
   }
-}
-.section {
-  padding: 14px;
-}
-.card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-.row-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--sp-border);
-  &:last-child {
-    border-bottom: none;
-  }
-}
-.row-info {
-  flex: 1;
-  min-width: 0;
-  .row-name {
-    font-size: 14px;
+
+  .wb-badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    font-size: 11px;
     font-weight: 600;
-  }
-  .row-sub {
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--sp-text-secondary);
-    margin-left: 6px;
-  }
-  .row-desc {
-    font-size: 12px;
-    color: var(--sp-text-secondary);
-    margin-top: 3px;
+    color: #ff6b00;
+    background: #fff3e0;
+    border-radius: 999px;
+    padding: 2px 8px;
   }
 }
 </style>

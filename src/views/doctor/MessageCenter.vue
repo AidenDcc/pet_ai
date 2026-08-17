@@ -15,13 +15,13 @@ import type { MessageCategory, MessageItem, MessageUnread } from '@/types'
 const router = useRouter()
 const { t } = useI18n()
 
+/** 医生端消息分两类：问诊消息 / 系统消息 */
 const TABS: { key: MessageCategory; titleKey: string }[] = [
-  { key: 'health', titleKey: 'user.message.tabHealth' },
-  { key: 'community', titleKey: 'user.message.tabCommunity' },
-  { key: 'system', titleKey: 'user.message.tabSystem' },
+  { key: 'consultation', titleKey: 'doctor.message.tabConsultation' },
+  { key: 'system', titleKey: 'doctor.message.tabSystem' },
 ]
 
-const active = ref<MessageCategory>('health')
+const active = ref<MessageCategory>('consultation')
 const list = ref<MessageItem[]>([])
 const loading = ref(false)
 const unread = ref<MessageUnread>({ total: 0, health: 0, community: 0, system: 0, consultation: 0 })
@@ -58,7 +58,7 @@ function onTabChange(name: string | number) {
 }
 
 function openDetail(msg: MessageItem) {
-  router.push(`/user/messages/${msg.id}`)
+  router.push(`/doctor/messages/${msg.id}`)
 }
 
 function onItemClick(msg: MessageItem) {
@@ -87,12 +87,12 @@ function toggleSelectAll() {
 
 async function batchRead() {
   if (!selectedCount.value) {
-    showToast(t('user.message.noSelection'))
+    showToast(t('doctor.message.noSelection'))
     return
   }
   try {
     await batchReadNotificationsApi(selectedIds.value)
-    showToast(t('user.message.batchReadSuccess'))
+    showToast(t('doctor.message.batchReadSuccess'))
     exitManage()
     await Promise.all([loadList(), loadUnread()])
   } catch (e) {
@@ -102,13 +102,13 @@ async function batchRead() {
 
 async function batchDelete() {
   if (!selectedCount.value) {
-    showToast(t('user.message.noSelection'))
+    showToast(t('doctor.message.noSelection'))
     return
   }
   try {
     await showDialog({
       title: t('common.confirmDelete'),
-      message: t('user.message.batchDeleteConfirm', { n: selectedCount.value }),
+      message: t('doctor.message.batchDeleteConfirm', { n: selectedCount.value }),
       confirmButtonText: t('common.delete'),
       cancelButtonText: t('common.cancel'),
       confirmButtonColor: '#ff6b6b',
@@ -118,7 +118,7 @@ async function batchDelete() {
   }
   try {
     await batchDeleteNotificationsApi(selectedIds.value)
-    showToast(t('user.message.batchDeleteSuccess'))
+    showToast(t('doctor.message.batchDeleteSuccess'))
     exitManage()
     await Promise.all([loadList(), loadUnread()])
   } catch (e) {
@@ -134,9 +134,9 @@ onMounted(() => {
 
 <template>
   <div class="msg-center">
-    <!-- 健康消息 / 宠圈消息 / 系统消息（含未读角标）+ 管理切换 -->
+    <!-- 问诊消息 / 系统消息（含未读角标）+ 管理切换 -->
     <div class="msg-head">
-      <van-tabs v-model:active="active" class="msg-tabs" color="#ff6b00" @change="onTabChange">
+      <van-tabs v-model:active="active" class="msg-tabs" color="#00b4a6" @change="onTabChange">
         <van-tab v-for="tab in TABS" :key="tab.key" :name="tab.key">
           <template #title>
             <span class="tab-title">
@@ -182,18 +182,18 @@ onMounted(() => {
         </div>
       </template>
 
-      <van-empty v-else :description="t('user.message.empty')" />
+      <van-empty v-else :description="t('doctor.message.empty')" />
     </div>
 
     <!-- 批量操作栏 -->
     <div v-if="manageMode" class="batch-bar">
       <div class="batch-select" @click="toggleSelectAll">
         <van-checkbox :model-value="allSelected" icon-size="18px" @click.stop />
-        <span>{{ t('user.message.selectAll') }}</span>
+        <span>{{ t('doctor.message.selectAll') }}</span>
       </div>
-      <span class="batch-count">{{ t('user.message.selectedCount', { n: selectedCount }) }}</span>
-      <button class="batch-btn" type="button" @click="batchRead">{{ t('user.message.batchRead') }}</button>
-      <button class="batch-btn batch-btn--danger" type="button" @click="batchDelete">{{ t('user.message.batchDelete') }}</button>
+      <span class="batch-count">{{ t('doctor.message.selectedCount', { n: selectedCount }) }}</span>
+      <button class="batch-btn" type="button" @click="batchRead">{{ t('doctor.message.batchRead') }}</button>
+      <button class="batch-btn batch-btn--danger" type="button" @click="batchDelete">{{ t('doctor.message.batchDelete') }}</button>
     </div>
   </div>
 </template>
@@ -204,7 +204,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #fbf3e3;
+  background: #eef7f6;
 }
 
 .msg-head {
@@ -224,7 +224,7 @@ onMounted(() => {
     border: none;
     background: none;
     font-size: 13px;
-    color: var(--sp-primary);
+    color: #00b4a6;
     cursor: pointer;
   }
 }
@@ -300,7 +300,7 @@ onMounted(() => {
     .msg-time {
       flex-shrink: 0;
       font-size: 11px;
-      color: #c4b48c;
+      color: #a0b8b4;
     }
   }
 
@@ -309,15 +309,14 @@ onMounted(() => {
     padding-left: 16px;
     font-size: 13px;
     line-height: 1.5;
-    color: #8a7a5a;
+    color: #5e8580;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  /* 未读：红点 + 主题加粗 */
   &.msg-item--unread {
-    background: #fffdf2;
+    background: #f2fcfb;
 
     .msg-dot {
       background: #ff4d4f;
@@ -358,9 +357,9 @@ onMounted(() => {
   }
 
   .batch-btn {
-    border: 1px solid var(--sp-primary);
+    border: 1px solid #00b4a6;
     background: #fff;
-    color: var(--sp-primary);
+    color: #00b4a6;
     font-size: 13px;
     padding: 7px 14px;
     border-radius: 999px;

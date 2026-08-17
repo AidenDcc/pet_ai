@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showToast } from 'vant'
+import { useAuthStore } from '@/stores/auth'
 import {
   getCommunityPostApi,
   toggleCommunityFollowApi,
@@ -13,13 +14,34 @@ import {
 import { relativeTime } from '@/utils/format'
 
 const route = useRoute()
+const auth = useAuthStore()
 const postId = route.params.id as string
 const { t } = useI18n()
+
+/** 关联数据图标 / 文案 */
+const attachmentIcon: Record<string, string> = {
+  report: 'notes-o',
+  track: 'location-o',
+  vitals: 'chart-trending-o',
+  exercise: 'logistics',
+}
+
+function attachmentLabel(type: string): string {
+  const keyMap: Record<string, string> = {
+    report: 'user.community.attachReport',
+    track: 'user.community.attachTrack',
+    vitals: 'user.community.attachVitals',
+    exercise: 'user.community.attachExercise',
+  }
+  return keyMap[type] ? t(keyMap[type]) : ''
+}
 
 const post = ref<PostDetail | null>(null)
 const loading = ref(false)
 const commentText = ref('')
 const sending = ref(false)
+
+const isSelf = computed(() => post.value?.authorId === auth.user?.id)
 
 async function load() {
   loading.value = true
@@ -92,6 +114,7 @@ load()
             <div class="post-time">{{ relativeTime(post.createdAt) }}</div>
           </div>
           <van-button
+            v-if="!isSelf"
             size="small"
             round
             :plain="true"
@@ -105,8 +128,15 @@ load()
         <!-- 发布文案 -->
         <div class="post-caption">{{ post.caption }}</div>
 
+        <!-- 视频 -->
+        <div v-if="post.video" class="post-video">
+          <img v-if="post.video.poster" :src="post.video.poster" class="post-video-img" alt="" />
+          <div v-else class="post-video-img post-video-img--placeholder"></div>
+          <span class="post-video-play"><van-icon name="play" color="#fff" /></span>
+        </div>
+
         <!-- 全部图片 -->
-        <div class="post-images">
+        <div v-if="post.images.length" class="post-images">
           <van-image
             v-for="(img, i) in post.images"
             :key="i"
@@ -114,6 +144,17 @@ load()
             :src="img"
             class="post-img"
           />
+        </div>
+
+        <!-- 关联数据 -->
+        <div v-if="post.attachments?.length" class="post-attachments">
+          <div v-for="a in post.attachments" :key="a.type" class="attach-card">
+            <van-icon :name="attachmentIcon[a.type]" class="attach-icon" />
+            <div class="attach-main">
+              <div class="attach-title">{{ attachmentLabel(a.type) }}</div>
+              <div class="attach-summary">{{ a.summary }}</div>
+            </div>
+          </div>
         </div>
 
         <!-- 查看 / 点赞 / 评论 / 发布时间 -->
@@ -212,6 +253,81 @@ load()
   font-size: 15px;
   line-height: 1.7;
   color: #333;
+}
+
+/* 视频 */
+.post-video {
+  position: relative;
+  margin-top: 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+
+  .post-video-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+
+    &--placeholder {
+      background: #333;
+    }
+  }
+
+  .post-video-play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* 关联数据卡片 */
+.post-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+
+  .attach-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fff7ee;
+  }
+
+  .attach-icon {
+    margin-top: 2px;
+    font-size: 18px;
+    color: #ff6b00;
+  }
+
+  .attach-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .attach-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #ff6b00;
+  }
+
+  .attach-summary {
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #8a7a5a;
+  }
 }
 
 .post-images {

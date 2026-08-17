@@ -1,4 +1,4 @@
-import { defineMock, MockError, requireUser, requireRole, uid, reportNo } from '../helper'
+import { defineMock, MockError, requireUser, requireRole, uid, reportNo, paginate } from '../helper'
 import { reports, findPetById, findUserById, findVetByUserId, vets, dailyAgg, health } from '../db'
 import { dayExercise } from '../exercise'
 import { referenceRangesOf } from '../refRange'
@@ -115,16 +115,24 @@ defineMock([
         .sort((a, b) => b.startAt - a.startAt)
     },
   },
-  // 运营端：平台全部宠物的历史健康报告（含待审核，可按宠物过滤）
+  // 运营端：平台全部宠物的历史健康报告（含待审核，可按宠物过滤、分页）
   {
     method: 'get',
     path: '/admin/reports',
     handler: (ctx) => {
       requireRole(ctx, 'admin')
-      const petId = (ctx.query.petId as string) || ''
+      const { page = 1, pageSize = 10, petId = '' } = ctx.query as {
+        page?: number
+        pageSize?: number
+        petId?: string
+      }
       let list = reports
       if (petId) list = list.filter((r) => r.petId === petId)
-      return list.map(joinReport).sort((a, b) => b.startAt - a.startAt)
+      return paginate(
+        list.map(joinReport).sort((a, b) => b.startAt - a.startAt),
+        Number(page),
+        Number(pageSize),
+      )
     },
   },
   // 报告详情（放在静态路径之后，避免覆盖 review-list / all）
