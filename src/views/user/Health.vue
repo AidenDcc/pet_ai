@@ -11,6 +11,7 @@ import { getExerciseSummaryApi, type ExerciseState } from '@/api/modules/exercis
 import Amap from '@/components/Amap.vue'
 import { SPECIES_ICON, DEVICE_STATUS, COMMAND_FEEDBACK } from '@/utils/consts'
 import { petAvatarSrc } from '@/utils/petAvatar'
+import petAvatar from '@/asset/image/宠物头像.png'
 import { haversineMeters } from '@/utils/geo'
 
 const router = useRouter()
@@ -116,27 +117,34 @@ function onPetSelect(index: number) {
   loadPetData()
 }
 
-function goVitals(metricType: string) {
+/** 无宠物时提示并阻止后续跳转 */
+function requirePet(): PetJoined | null {
   const pet = activePet.value
+  if (!pet) showToast(t('user.consult.noPet'))
+  return pet
+}
+
+function goVitals(metricType: string) {
+  const pet = requirePet()
   if (!pet) return
   router.push(`/user/health/vitals/${pet.id}/${metricType}`)
 }
 
 function goExerciseTrend(metricType = 'stepFreq') {
-  const pet = activePet.value
+  const pet = requirePet()
   if (!pet) return
   router.push(`/user/health/exercise/${pet.id}/${metricType}`)
 }
 
 function goFenceManage() {
-  const pet = activePet.value
+  const pet = requirePet()
   if (!pet) return
   router.push(`/user/health/fence/${pet.id}`)
 }
 
 /** 快捷功能：轨迹 —— 查看宠物历史运动轨迹（默认一天，可选时间区间） */
 function goTrack() {
-  const pet = activePet.value
+  const pet = requirePet()
   if (!pet) return
   router.push(`/user/health/track/${pet.id}`)
 }
@@ -374,8 +382,8 @@ loadAll()
       </div>
     </div>
 
-    <!-- 底部信息面板（1/3 屏） -->
-    <div v-if="activePet" class="info-panel">
+    <!-- 底部信息面板（1/3 屏，无宠物时展示占位） -->
+    <div class="info-panel">
       <!-- 拉手 -->
       <div class="panel-handle">
         <div class="handle-bar" />
@@ -383,11 +391,12 @@ loadAll()
 
       <!-- 宠物头部信息 -->
       <div class="panel-pet-header">
-        <img class="panel-avatar" :src="petAvatarSrc(activePet.name) || activePet.avatar" :alt="activePet.name" />
+        <img class="panel-avatar" :src="petAvatarSrc(activePet?.name) || activePet?.avatar || petAvatar" :alt="activePet?.name ?? ''" />
         <div class="panel-pet-info">
           <div class="panel-pet-name-row">
             <div class="panel-pet-name">
-              {{ SPECIES_ICON[activePet.species] }} {{ activePet.name }}
+              <template v-if="activePet">{{ SPECIES_ICON[activePet.species] }} {{ activePet.name }}</template>
+              <span v-else>--</span>
             </div>
             <!-- 设备信息：昵称右侧，靠右距面板边缘 20px -->
             <div v-if="activeDevice" class="panel-device">
@@ -400,14 +409,14 @@ loadAll()
                 {{ activeDevice.battery }}%
               </span>
             </div>
-            <span v-else class="panel-device panel-device--none">{{ t('user.health.deviceUnbound') }}</span>
+            <span v-else class="panel-device panel-device--none">{{ activePet ? t('user.health.deviceUnbound') : '--' }}</span>
           </div>
           <div class="panel-pet-pos">
-            <span class="pos-dot" />
+            <span v-if="activePet" class="pos-dot" />
             <span v-if="fenceState" class="pos-fence" :class="`is-${fenceState}`">
               {{ t(fenceState === 'inside' ? 'user.health.insideFence' : 'user.health.outsideFence') }}
             </span>
-            {{ track ? track.address : t('user.health.positionLoading') }}
+            {{ track ? track.address : activePet ? t('user.health.positionLoading') : '--' }}
           </div>
         </div>
       </div>
@@ -569,10 +578,6 @@ loadAll()
       </div>
     </van-popup>
 
-    <!-- 加载/空状态 -->
-    <div v-if="!loading && !pets.length" class="monitor-empty">
-      <van-empty :description="t('user.health.noDevice')" />
-    </div>
   </div>
 </template>
 
@@ -1158,12 +1163,4 @@ loadAll()
   }
 }
 
-.monitor-empty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--sp-bg);
-}
 </style>

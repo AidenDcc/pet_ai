@@ -41,10 +41,13 @@ function selectPet(i: number) {
   activeIndex.value = i
 }
 
-/** 核心宠物信息大卡片：点击进入宠物详情（与「我的宠物」列表详情一致） */
+/** 核心宠物信息大卡片：点击进入宠物详情（无宠物时引导去添加） */
 function goPetDetail() {
   const pet = activePet.value
-  if (!pet) return
+  if (!pet) {
+    router.push('/user/pets/add')
+    return
+  }
   router.push(`/user/pet/${pet.id}`)
 }
 
@@ -59,17 +62,9 @@ function onMenuSelect(action: { key?: string } | undefined) {
 
 <template>
   <div class="home-page">
-    <!-- 无宠物引导 -->
-    <van-empty v-if="!loading && !pets.length" :description="t('user.home.empty')">
-      <van-button round type="primary" @click="router.push('/user/pets')">
-        {{ t('user.home.goBind') }}
-      </van-button>
-    </van-empty>
+    <van-skeleton v-if="loading" title :row="5" class="mt-16" />
 
     <template v-else>
-      <van-skeleton v-if="loading" title :row="5" class="mt-16" />
-
-      <template v-else>
         <!-- 顶部：标题 + 汉堡菜单 -->
         <header class="home-header">
           <h1 class="home-title">{{ t('user.home.myPets') }}</h1>
@@ -106,8 +101,8 @@ function onMenuSelect(action: { key?: string } | undefined) {
           </div>
         </div>
 
-        <!-- 核心宠物信息大卡片：点击查看宠物详情 -->
-        <section v-if="activePet" class="hero-card" @click="goPetDetail">
+        <!-- 核心宠物信息大卡片：点击查看宠物详情（无宠物时展示占位） -->
+        <section class="hero-card" @click="goPetDetail">
           <span class="hero-more">
             {{ t('nav.petProfile') }}
             <van-icon name="arrow" size="12" />
@@ -115,34 +110,37 @@ function onMenuSelect(action: { key?: string } | undefined) {
           <div class="hero-main">
             <div class="hero-info">
               <div class="hero-name">
-                {{ SPECIES_ICON[activePet.species] }} {{ activePet.name }}
-                <span class="hero-gender">{{ activePet.gender === 'male' ? '♂' : '♀' }}</span>
+                <template v-if="activePet">
+                  {{ SPECIES_ICON[activePet.species] }} {{ activePet.name }}
+                  <span class="hero-gender">{{ activePet.gender === 'male' ? '♂' : '♀' }}</span>
+                </template>
+                <span v-else class="hero-placeholder">--</span>
               </div>
-              <div class="hero-age">{{ t('common.yearsOld', { n: ageOf(activePet.birthDate) }) }}</div>
-              <span class="hero-tag">{{ activePet.breed }}</span>
+              <div class="hero-age">{{ activePet ? t('common.yearsOld', { n: ageOf(activePet.birthDate) }) : '--' }}</div>
+              <span class="hero-tag">{{ activePet?.breed ?? '--' }}</span>
             </div>
 
             <!-- 宠物头像图片：布丁/雪球用专属头像，其余回退到通用头像 -->
-            <img class="hero-pet" :src="petAvatarSrc(activePet.name) || petAvatar" alt="" aria-hidden="true" />
+            <img class="hero-pet" :src="petAvatarSrc(activePet?.name) || petAvatar" alt="" aria-hidden="true" />
           </div>
 
           <!-- 卡片内横向功能栏 -->
           <div class="hero-cells">
             <div class="hero-cell">
-              <div class="cell-num">{{ activePet.weight }}<span class="cell-unit">kg</span></div>
+              <div class="cell-num">{{ activePet ? activePet.weight : '--' }}<span v-if="activePet" class="cell-unit">kg</span></div>
               <div class="cell-label">{{ t('user.home.weight') }}</div>
             </div>
-            
+
             <div class="hero-cell">
-              <div class="cell-num">{{ BATH_COUNT }}</div>
+              <div class="cell-num">{{ activePet ? BATH_COUNT : '--' }}</div>
               <div class="cell-label">{{ t('user.home.bath') }}</div>
             </div>
             <div class="hero-cell">
-              <div class="cell-num">{{ dewormCount }}</div>
+              <div class="cell-num">{{ activePet ? dewormCount : '--' }}</div>
               <div class="cell-label">{{ t('user.home.deworm') }}</div>
             </div>
             <div class="hero-cell">
-              <div class="cell-num">{{ vaccineCount }}</div>
+              <div class="cell-num">{{ activePet ? vaccineCount : '--' }}</div>
               <div class="cell-label">{{ t('user.home.vaccine') }}</div>
             </div>
           </div>
@@ -256,7 +254,6 @@ function onMenuSelect(action: { key?: string } | undefined) {
             <span class="action-label">{{ t('nav.selfcheck') }}</span>
           </div>
         </div>
-      </template>
     </template>
 
     <!-- 汉堡菜单 -->
