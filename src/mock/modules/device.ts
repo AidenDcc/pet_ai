@@ -48,6 +48,19 @@ const COMMAND_TEXT: Record<string, string> = {
   refresh: '已请求刷新最新定位',
 }
 
+/** 附近 WiFi 热点（模拟扫描结果） */
+const WIFI_APS = [
+  { ssid: 'PetHome_5G', secured: true },
+  { ssid: 'SX-Office', secured: true },
+  { ssid: 'HomeWiFi', secured: true },
+  { ssid: 'Pet-Home-2.4G', secured: false },
+  { ssid: 'MyNetwork', secured: true },
+  { ssid: 'Guest', secured: false },
+]
+function mockWifiAps() {
+  return WIFI_APS.map((ap) => ({ ...ap, signal: rand(-88, -40) }))
+}
+
 defineMock([
   // 蓝牙扫描：返回周边未绑定设备（信号强度随机模拟）
   {
@@ -207,6 +220,9 @@ defineMock([
       // 刷新定位指令同时模拟一次上报：更新信号 / 电量 / 同步时间
       if (command === 'refresh') {
         device.signal = rand(-85, -40)
+        device.networks.forEach((n) => {
+          n.signal = n.method === '4g' ? rand(35, 100) : rand(-85, -40)
+        })
         device.battery = Math.max(5, Math.min(100, device.battery + rand(-2, 3)))
         device.lastSyncAt = new Date().toISOString()
       }
@@ -304,6 +320,43 @@ defineMock([
       if (device.ownerId && device.ownerId !== user.id) throw new MockError('无权操作该设备', 403)
       if (device.status === 'unbound' || !device.boundPetId) throw new MockError('设备未绑定宠物，无法上传', 1007)
       return joinUpload(pushUpload(device.id, 'manual'))
+    },
+  },
+  // WiFi 配置状态 + 附近热点
+  {
+    method: 'get',
+    path: '/device/:id/wifi',
+    handler: ({ params }) => {
+      const device = findDeviceById(params.id)
+      if (!device) throw new MockError('设备不存在', 404)
+      const wifi = device.networks.find((n) => n.method === 'wifi')
+      return {
+        ssid: device.wifiSsid,
+        connected: wifi?.connected ?? false,
+        signal: wifi?.signal ?? -80,
+        nearby: mockWifiAps(),
+      }
+    },
+  },
+  // 配置设备 WiFi
+  {
+    method: 'post',
+    path: '/device/:id/wifi',
+    handler: (ctx) => {
+      const user = requireUser(ctx)
+      const device = findDeviceById(ctx.params.id)
+      if (!device) throw new MockError('设备不存在', 404)
+      if (device.ownerId && device.ownerId !== user.id) throw new MockError('无权操作该设备', 403)
+      const { ssid } = (ctx.body ?? {}) as { ssid?: string }
+      if (!ssid) throw new MockError('请选择要连接的 WiFi 网络', 1003)
+      device.wifiSsid = ssid
+      const wifi = device.networks.find((n) => n.method === 'wifi')
+      if (wifi) {
+        wifi.connected = true
+        wifi.signal = rand(-70, -40)
+      }
+      device.lastSyncAt = new Date().toISOString()
+      return { ok: true, ssid }
     },
   },
 ])

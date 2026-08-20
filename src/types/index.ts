@@ -137,6 +137,10 @@ export interface DeviceInfo {
   activatedAt: string | null
   geofence: Geofence | null
   lastSyncAt: string
+  /** 各通讯方式（蓝牙 / WiFi / 4G）的连接状态与信号强度 */
+  networks: DeviceNetworkStatus[]
+  /** 当前已连接的 WiFi 名称（未配置为 null） */
+  wifiSsid: string | null
 }
 
 /** 生命体征采样点 */
@@ -162,6 +166,17 @@ export type HealthMetricType =
 
 /** 设备通讯方式 */
 export type CommMethod = '4g' | 'ble' | 'wifi'
+
+/** 单个通讯方式的连接状态与信号强度 */
+export interface DeviceNetworkStatus {
+  method: CommMethod // '4g' | 'ble' | 'wifi'
+  /** 设备是否支持该通讯方式 */
+  supported: boolean
+  /** 是否已连接 */
+  connected: boolean
+  /** 信号强度：蓝牙/WiFi 为 RSSI dBm（-100 ~ -30）；4G 为百分比 0-100 */
+  signal: number
+}
 
 /** 设备主档案（产线 / 在售 / 已售的全部宠物设备） */
 export interface DeviceMaster {

@@ -113,4 +113,30 @@ export function uploadDeviceDataApi(deviceId: string) {
   return request.post<unknown, UploadRecordJoined>(`/device/${deviceId}/upload`)
 }
 
+/** 附近可扫描到的 WiFi 热点 */
+export interface WifiAp {
+  ssid: string
+  signal: number // RSSI dBm
+  secured: boolean
+}
+
+/** 设备当前 WiFi 配置状态 + 附近热点 */
+export interface DeviceWifiInfo {
+  /** 当前已连接的 WiFi 名称（未配置为 null） */
+  ssid: string | null
+  connected: boolean
+  signal: number
+  nearby: WifiAp[]
+}
+
+/** 查询设备 WiFi 配置状态与附近热点 */
+export function getDeviceWifiApi(id: string) {
+  return request.get<unknown, DeviceWifiInfo>(`/device/${id}/wifi`)
+}
+
+/** 给设备配置 WiFi（连接指定热点） */
+export function configureDeviceWifiApi(id: string, data: { ssid: string; password?: string }) {
+  return request.post<unknown, { ok: boolean; ssid: string }>(`/device/${id}/wifi`, data)
+}
+
 export type { Geofence }

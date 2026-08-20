@@ -341,6 +341,12 @@ export const userRoutes: RouteRecordRaw[] = [
         meta: { titleKey: 'user.firmware.title' },
       },
       {
+        path: 'devices/:id/wifi',
+        name: 'user-device-wifi',
+        component: () => import('@/views/user/DeviceWifi.vue'),
+        meta: { titleKey: 'user.wifi.title' },
+      },
+      {
         path: 'pets',
         name: 'user-pets',
         component: () => import('@/views/user/PetList.vue'),

@@ -311,6 +311,16 @@ demoOwner.petIds = ['p1', 'p2']
  * ============================================================ */
 export const devices: DeviceInfo[] = []
 
+/** 根据设备状态与 WiFi 配置生成三种通讯方式的连接状态与信号 */
+function makeNetworks(status: string, wifiSsid: string | null): DeviceInfo['networks'] {
+  const connected = status === 'online' || status === 'low-power'
+  return [
+    { method: 'ble', supported: true, connected, signal: rand(-85, -40) },
+    { method: 'wifi', supported: true, connected: connected && !!wifiSsid, signal: wifiSsid ? rand(-70, -40) : rand(-92, -60) },
+    { method: '4g', supported: true, connected, signal: rand(35, 100) },
+  ]
+}
+
 function addDevice(data: Partial<DeviceInfo>): DeviceInfo {
   const device: DeviceInfo = {
     id: `d${devices.length + 1}`,
@@ -328,7 +338,12 @@ function addDevice(data: Partial<DeviceInfo>): DeviceInfo {
     activatedAt: null,
     geofence: null,
     lastSyncAt: new Date(Date.now() - rand(1, 60) * 60000).toISOString(),
+    networks: [],
+    wifiSsid: null,
     ...data,
+  }
+  if (!data.networks) {
+    device.networks = makeNetworks(device.status, device.wifiSsid)
   }
   devices.push(device)
   return device
@@ -344,6 +359,7 @@ addDevice({
   status: 'online',
   battery: 78,
   signal: -52,
+  wifiSsid: 'PetHome_5G',
   geofence: { center: { lat: 31.2304, lng: 121.4737 }, radius: 500, enabled: true },
 })
 addDevice({
@@ -357,6 +373,7 @@ addDevice({
   battery: 63,
   signal: -68,
   firmware: 'v2.5.0',
+  wifiSsid: 'SX-Office',
   geofence: { center: { lat: 31.2204, lng: 121.4637 }, radius: 300, enabled: true },
 })
 

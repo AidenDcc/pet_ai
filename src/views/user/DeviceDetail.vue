@@ -33,27 +33,30 @@ const COMMANDS = computed(() => [
   { name: `🛰️ ${t('user.devices.cmdRefresh')}`, value: 'refresh' },
 ])
 
-/** 信号等级：强/良好/一般/弱/离线 */
-const signalLevel = computed(() => {
-  if (!device.value || device.value.status !== 'online') return 'offline'
-  const s = device.value.signal
-  if (s > -55) return 'strong'
-  if (s > -67) return 'good'
-  if (s > -80) return 'fair'
-  return 'weak'
-})
-const signalBars = computed(() => {
-  const map: Record<string, number> = { strong: 4, good: 3, fair: 2, weak: 1, offline: 0 }
-  return map[signalLevel.value]
-})
-const SIGNAL_LABEL_KEY: Record<string, string> = {
-  strong: 'signalStrong',
-  good: 'signalGood',
-  fair: 'signalFair',
-  weak: 'signalWeak',
-  offline: 'signalOffline',
+type NetworkKind = 'ble' | 'wifi' | '4g'
+
+const NETWORK_META: Record<NetworkKind, { icon: string; labelKey: string }> = {
+  ble: { icon: '🔵', labelKey: 'user.devices.netBle' },
+  wifi: { icon: '📶', labelKey: 'user.devices.netWifi' },
+  '4g': { icon: '📡', labelKey: 'user.devices.net4g' },
 }
-const signalText = computed(() => t(`user.devices.${SIGNAL_LABEL_KEY[signalLevel.value]}`))
+
+/** 各信号等级对应的信号条数 */
+const LEVEL_BARS: Record<string, number> = { strong: 4, good: 3, fair: 2, weak: 1 }
+
+/** 信号等级：蓝牙/WiFi 用 dBm 阈值，4G 用百分比阈值 */
+function networkSignalLevel(signal: number, method: NetworkKind): string {
+  if (method === '4g') {
+    if (signal > 80) return 'strong'
+    if (signal > 60) return 'good'
+    if (signal > 40) return 'fair'
+    return 'weak'
+  }
+  if (signal > -55) return 'strong'
+  if (signal > -67) return 'good'
+  if (signal > -80) return 'fair'
+  return 'weak'
+}
 
 function batteryColor(b: number) {
   if (b > 50) return '#ff6b00'
@@ -169,6 +172,10 @@ function goFirmware() {
   router.push(`/user/devices/${deviceId}/firmware`)
 }
 
+function goWifi() {
+  router.push(`/user/devices/${deviceId}/wifi`)
+}
+
 const isLatestFirmware = computed(() => {
   if (!device.value?.latestFirmware) return true
   return device.value.firmware === device.value.latestFirmware
@@ -194,26 +201,37 @@ load()
       <div class="hero-model">{{ device.model }}</div>
     </div>
 
-    <!-- 信号 + 电量 -->
+    <!-- 网络连接 + 电量 -->
     <div class="metric-card sp-card mt-16">
-      <div class="metric-row">
-        <span class="metric-icon">📶</span>
-        <div class="metric-info">
-          <div class="metric-label">{{ t('user.devices.signal') }}</div>
-          <div class="signal-bars" :class="`signal-bars--${signalLevel}`">
-            <span v-for="i in 4" :key="i" class="signal-bar" :class="{ lit: i <= signalBars }" />
-          </div>
-        </div>
-        <div class="metric-value" :class="`signal-bars--${signalLevel}`">
-          <span class="signal-text">{{ signalText }}</span>
-          <span v-if="signalLevel !== 'offline'" class="signal-dbm">{{ device.signal }} dBm</span>
-        </div>
+      <div class="metric-header">
+        <span class="metric-title">{{ t('user.devices.network') }}</span>
         <van-icon
           v-if="device.status === 'online'"
           name="replay"
           class="signal-refresh"
           @click="refreshSignal"
         />
+      </div>
+
+      <div class="network-list">
+        <div v-for="net in device.networks" :key="net.method" class="metric-row">
+          <span class="metric-icon">{{ NETWORK_META[net.method].icon }}</span>
+          <div class="metric-info">
+            <div class="metric-label">{{ t(NETWORK_META[net.method].labelKey) }}</div>
+            <div v-if="net.supported" class="signal-bars" :class="`signal-bars--${networkSignalLevel(net.signal, net.method)}`">
+              <span v-for="i in 4" :key="i" class="signal-bar" :class="{ lit: i <= LEVEL_BARS[networkSignalLevel(net.signal, net.method)] }" />
+            </div>
+          </div>
+          <div class="metric-value">
+            <van-tag v-if="!net.supported" round type="default">{{ t('user.devices.netUnsupported') }}</van-tag>
+            <template v-else>
+              <van-tag round :type="net.connected ? 'success' : 'default'">
+                {{ t(net.connected ? 'user.devices.netConnected' : 'user.devices.netDisconnected') }}
+              </van-tag>
+              <span class="signal-dbm">{{ net.method === '4g' ? `${net.signal}%` : `${net.signal} dBm` }}</span>
+            </template>
+          </div>
+        </div>
       </div>
 
       <van-divider :style="{ margin: '14px 0' }" />
@@ -259,6 +277,11 @@ load()
             </template>
             <span>{{ device.firmware }}</span>
           </span>
+        </template>
+      </van-cell>
+      <van-cell :title="t('user.devices.wifiConfig')" is-link @click="goWifi">
+        <template #value>
+          <span>{{ device.wifiSsid ?? t('user.wifi.notConfigured') }}</span>
         </template>
       </van-cell>
       <van-cell
@@ -350,6 +373,21 @@ load()
 /* ---- 信号 / 电量 ---- */
 .metric-card {
   padding: 16px;
+}
+.metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  .metric-title {
+    font-size: 15px;
+    font-weight: 700;
+  }
+}
+.network-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 .metric-row {
   display: flex;
