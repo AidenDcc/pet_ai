@@ -1766,6 +1766,7 @@ export default {
       generateConfirm: '确认为「{name}」生成一份新的健康报告？',
       generated: '报告已生成',
       noData: '暂无报告',
+      dblclickHint: '双击行可快速打开详情',
       sourceAi: 'AI 生成',
       sourceOffline: '离线生成',
       grade: '评级',
@@ -1781,6 +1782,8 @@ export default {
       totalActivity: '周期总步数',
       exerciseDurationMin: '日均运动时长',
       dailyAvg: '周期日均',
+      gaitShare: '占比 {pct}%',
+      gaitNoData: '暂无步态数据',
       aiAnalysis: 'AI 智能分析',
       aiGrade: '综合健康评级',
       aiGradeLabels: {

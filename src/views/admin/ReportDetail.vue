@@ -8,6 +8,7 @@ import { getPetApi, type PetJoined } from '@/api/modules/pet'
 import { SPECIES_ICON, SPECIES_LABEL, GENDER_LABEL } from '@/utils/consts'
 import { ageOf } from '@/utils/format'
 import ReportTrendChart from '@/components/ReportTrendChart.vue'
+import GaitRingChart from '@/components/GaitRingChart.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,20 +25,20 @@ const loading = ref(false)
 /** 运动与代谢指标 tab 激活项 */
 const activeTab = ref<'vitals' | 'exercise'>('vitals')
 
-/** 体征趋势图配置（心率 / 呼吸频率 / 血氧 / 体温） */
+/** 体征趋势图配置（心率 / 呼吸频率 / 血氧 / 体温 / 卡路里） */
 const VITAL_TREND = [
   { key: 'heartRate', labelKey: 'user.health.heartRate', unitKey: 'user.health.bpm', color: '#ff6b6b' },
   { key: 'respiratoryRate', labelKey: 'user.health.respiratory', unitKey: 'user.health.bpm', color: '#5b8ff9' },
   { key: 'spo2', labelKey: 'user.health.spo2', unitKey: 'user.health.percent', color: '#00b4a6' },
   { key: 'temperature', labelKey: 'user.health.temperature', unitKey: 'user.health.degreeC', color: '#ff9f43' },
+  { key: 'calorie', labelKey: 'user.health.calorie', unitKey: 'user.health.calorieUnit', color: '#34c759' },
 ] as const
 
-/** 运动趋势图配置（步频 / 步幅 / 速度 / 卡路里） */
+/** 运动趋势图配置（步频 / 步幅 / 速度）；卡路里已由「步态」圆角环形图替代 */
 const EXERCISE_TREND = [
   { key: 'stepFreq', labelKey: 'user.health.stepFreq', unitKey: 'user.health.stepFreqUnit', color: '#5b8ff9' },
   { key: 'stride', labelKey: 'user.health.stride', unitKey: 'user.health.strideUnit', color: '#ff9f43' },
   { key: 'speed', labelKey: 'user.health.speed', unitKey: 'user.health.speedUnit', color: '#00b4a6' },
-  { key: 'calorie', labelKey: 'user.health.calorie', unitKey: 'user.health.calorieUnit', color: '#34c759' },
 ] as const
 
 const GRADE_LABEL_KEY: Record<'A' | 'B' | 'C' | 'D', string> = {
@@ -72,6 +73,24 @@ function riskOf(grade: 'A' | 'B' | 'C' | 'D'): 'none' | 'mild' | 'severe' {
 const CAL_PER_STEP = 0.05
 function dailyCalorie(r: ReportJoined): number {
   return Math.round((r.exerciseSummary?.dailyActivity ?? 0) * CAL_PER_STEP)
+}
+
+/** 步态标签（如 trot → 小跑） */
+function gaitLabel(gait: string): string {
+  const key = `user.health.gaitTypes.${gait}`
+  return (t(key) as string) || gait
+}
+
+/** 周期主导步态及占比（由步态分布取权重最大项；无数据返回 null） */
+function dominantGait(r: ReportJoined): { key: 'trot' | 'walk' | 'run' | 'rest'; pct: number } | null {
+  const dist = r.exerciseSummary?.gaitDistribution
+  if (!dist) return null
+  const keys = Object.keys(dist) as ('trot' | 'walk' | 'run' | 'rest')[]
+  if (!keys.length) return null
+  const total = keys.reduce((s, k) => s + (dist[k] ?? 0), 0)
+  if (!total) return null
+  const top = keys.reduce((a, k) => (dist[k] > dist[a] ? k : a), keys[0])
+  return { key: top, pct: Math.round(((dist[top] ?? 0) / total) * 100) }
 }
 
 /** 指标卡片展示项（体征/运动共用） */
@@ -126,6 +145,13 @@ const vitalCards = computed<MetricCard[]>(() => {
       compare: cmp?.respiratoryRate,
       compareUnit: t('user.health.bpm'),
     },
+    {
+      label: `${t('user.health.calorie')} (${t('user.health.calorieUnit')})`,
+      valueText: String(dailyCalorie(r)),
+      range: t('admin.petReports.dailyAvg'),
+      compare: cmp?.calorie,
+      compareUnit: t('user.health.calorieUnit'),
+    },
   ]
 })
 
@@ -134,6 +160,7 @@ const exerciseCards = computed<MetricCard[]>(() => {
   if (!r) return []
   const e = r.exerciseSummary
   const cmp = r.compare
+  const gait = dominantGait(r)
   return [
     {
       label: `${t('user.health.stepFreq')} (${t('user.health.stepFreqUnit')})`,
@@ -160,11 +187,10 @@ const exerciseCards = computed<MetricCard[]>(() => {
       exercise: true,
     },
     {
-      label: `${t('user.health.calorie')} (${t('user.health.calorieUnit')})`,
-      valueText: String(dailyCalorie(r)),
-      range: t('admin.petReports.dailyAvg'),
-      compare: cmp?.calorie,
-      compareUnit: t('user.health.calorieUnit'),
+      label: t('user.health.gait'),
+      valueText: gait ? gaitLabel(gait.key) : '—',
+      range: gait ? t('admin.petReports.gaitShare', { pct: gait.pct }) : '',
+      compareUnit: '',
       exercise: true,
     },
   ]
@@ -394,6 +420,13 @@ load()
                     <span class="trend-unit">{{ t(m.unitKey) }}</span>
                   </div>
                   <ReportTrendChart :points="report.trend[m.key]" :unit="t(m.unitKey)" :color="m.color" height="200px" />
+                </div>
+                <!-- 步态：圆角环形图展示周期步态分布 -->
+                <div class="trend-card">
+                  <div class="trend-head">
+                    <span class="trend-name">{{ t('user.health.gait') }}</span>
+                  </div>
+                  <GaitRingChart :distribution="report.exerciseSummary?.gaitDistribution" height="200px" />
                 </div>
               </div>
             </el-tab-pane>

@@ -60,6 +60,7 @@ declare module 'vue' {
     ElTree: typeof import('element-plus/es')['ElTree']
     ElTreeSelect: typeof import('element-plus/es')['ElTreeSelect']
     ElUpload: typeof import('element-plus/es')['ElUpload']
+    GaitRingChart: typeof import('./components/GaitRingChart.vue')['default']
     PetAvatarUploader: typeof import('./components/PetAvatarUploader.vue')['default']
     PetCareSections: typeof import('./components/PetCareSections.vue')['default']
     PhoneShell: typeof import('./components/PhoneShell.vue')['default']

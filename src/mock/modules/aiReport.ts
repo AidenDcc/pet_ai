@@ -1,7 +1,7 @@
 import { defineMock, MockError, requireUser, requireRole, uid, reportNo } from '../helper'
 import { reports, findPetById, findUserById, dailyAgg } from '../db'
 import { buildTrend } from './report'
-import { dayExercise } from '../exercise'
+import { dayExercise, gaitDistributionOf } from '../exercise'
 import { referenceRangesOf } from '../refRange'
 import type { AbnormalItem, PetInfo, ReportItem } from '@/types'
 
@@ -81,6 +81,7 @@ interface ExerciseAgg {
   speed: number
   durationMin: number
   days: number
+  gaitDistribution: Record<'trot' | 'walk' | 'run' | 'rest', number>
 }
 
 function aggVitals(petId: string, startAt: number, endAt: number): VitalsAgg {
@@ -97,7 +98,8 @@ function aggVitals(petId: string, startAt: number, endAt: number): VitalsAgg {
 
 function aggExercise(pet: PetInfo, startAt: number, endAt: number): ExerciseAgg {
   const days = (dailyAgg[pet.id] ?? []).filter((d) => d.ts >= startAt && d.ts <= endAt)
-  if (!days.length) return { totalActivity: 0, dailyActivity: 0, stepFreq: 0, stride: 0, speed: 0, durationMin: 0, days: 0 }
+  if (!days.length)
+    return { totalActivity: 0, dailyActivity: 0, stepFreq: 0, stride: 0, speed: 0, durationMin: 0, days: 0, gaitDistribution: { trot: 0, walk: 0, run: 0, rest: 0 } }
   const perDay = days.map((d) => ({ ...dayExercise(pet, d.ts, d.steps), steps: d.steps }))
   const totalActivity = days.reduce((s, d) => s + d.steps, 0)
   return {
@@ -108,6 +110,7 @@ function aggExercise(pet: PetInfo, startAt: number, endAt: number): ExerciseAgg 
     speed: round2(median(perDay.map((p) => p.speed))),
     durationMin: Math.round(median(perDay.map((p) => p.durationMin))),
     days: days.length,
+    gaitDistribution: gaitDistributionOf(days, pet),
   }
 }
 
@@ -469,6 +472,7 @@ function mapAiReport(pet: PetInfo, ai: Record<string, unknown>, context: {
       stride: e.stride,
       speed: e.speed,
       exerciseDurationMin: e.durationMin,
+      gaitDistribution: e.gaitDistribution,
     },
     timeRange: context.timeRange,
     source: context.source,

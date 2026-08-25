@@ -83,6 +83,11 @@ function onFilterChange() {
   load()
 }
 
+/** 双击行打开报告详情 */
+function onRowDblClick(row: ReportJoined) {
+  router.push(`/admin/pets/reports/${row.id}`)
+}
+
 function reviewTag(row: ReportJoined): { type: 'success' | 'danger' | 'warning' | 'info'; label: string } {
   if (row.doctorReview === 'approved') return { type: 'success', label: t('status.approved') }
   if (row.doctorReview === 'rejected') return { type: 'danger', label: t('status.rejected') }
@@ -159,11 +164,12 @@ onMounted(() => {
             </div>
           </el-option>
         </el-select>
+        <span class="dbl-hint">{{ t('admin.petReports.dblclickHint') }}</span>
         <div class="spacer" />
         <el-button type="primary" icon="Plus" @click="openGenerate">{{ t('admin.petReports.generate') }}</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="list" stripe :empty-text="t('admin.petReports.noData')">
+      <el-table v-loading="loading" :data="list" stripe :empty-text="t('admin.petReports.noData')" @row-dblclick="onRowDblClick">
         <el-table-column :label="t('admin.common.pet')" min-width="160">
           <template #default="{ row }">
             <div class="flex gap-8">
@@ -277,6 +283,14 @@ onMounted(() => {
 }
 .spacer {
   flex: 1;
+}
+.dbl-hint {
+  align-self: center;
+  font-size: 12px;
+  color: var(--sp-text-placeholder);
+}
+:deep(.el-table__row) {
+  cursor: pointer;
 }
 .pager {
   display: flex;

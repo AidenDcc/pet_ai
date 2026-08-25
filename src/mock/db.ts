@@ -27,7 +27,7 @@ import type {
   VetInfo,
 } from '@/types'
 import { pick, rand, randFloat, uid, reportNo } from './helper'
-import { dayExercise } from './exercise'
+import { dayExercise, gaitDistributionOf } from './exercise'
 import { referenceRangesOf } from './refRange'
 import bdAvatar from '@/asset/image/宠物头像-布丁.png'
 import xqAvatar from '@/asset/image/宠物头像-雪球.png'
@@ -1040,6 +1040,7 @@ function genReports(pet: PetInfo): ReportItem[] {
     const exTotal = exDays.reduce((s, d) => s + d.steps, 0)
     const exDaily = exDays.length ? Math.round(exTotal / exDays.length) : 0
     const exs = exDays.map((d) => dayExercise(pet, d.ts, d.steps))
+    const gaitDistribution = gaitDistributionOf(exDays, pet)
     const med = (ns: number[]) => (ns.length ? [...ns].sort((a, b) => a - b)[Math.floor(ns.length / 2)] : 0)
     const r1 = (n: number) => Math.round(n * 10) / 10
     const r2 = (n: number) => Math.round(n * 100) / 100
@@ -1102,6 +1103,7 @@ function genReports(pet: PetInfo): ReportItem[] {
         stride: Number(med(exs.map((e) => e.stride)).toFixed(1)),
         speed: Number(med(exs.map((e) => e.speed)).toFixed(2)),
         exerciseDurationMin: Math.round(med(exs.map((e) => e.durationMin))),
+        gaitDistribution,
       },
       doctorId: null,
       doctorReview,

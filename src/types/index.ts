@@ -309,6 +309,8 @@ export interface ReportItem {
     speed: number
     /** 日均有效运动时长（分钟） */
     exerciseDurationMin: number
+    /** 周期内步态分布（各步态出现的天数） */
+    gaitDistribution: Record<'trot' | 'walk' | 'run' | 'rest', number>
   }
   /** 与上一周期比较（当前 - 上期；正=上升 负=下降） */
   compare?: {

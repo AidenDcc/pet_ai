@@ -15,6 +15,37 @@ export function seeded(seed: number): () => number {
 }
 
 /**
+ * 由步数推导当日步态（物种基线 + 活动强度，确定性生成，与 dayExercise 同源）
+ * 低活动量猫类更容易出现 rest；stepsMax 用于归一化活动强度：日粒度 12800 步
+ */
+export function dayGait(
+  pet: PetInfo,
+  ts: number,
+  steps: number,
+  stepsMax = 12800,
+): 'trot' | 'walk' | 'run' | 'rest' {
+  const isCat = pet.species === 'cat'
+  const rnd = seeded(Math.floor(ts / DAY) + 101)
+  const active = Math.min(1, steps / stepsMax)
+  const r = rnd()
+  if (active >= 0.8) return r < 0.3 ? 'run' : r < 0.7 ? 'trot' : 'walk'
+  if (active >= 0.55) return r < 0.15 ? 'run' : r < 0.55 ? 'trot' : 'walk'
+  if (active >= 0.25) return r < 0.1 ? 'trot' : r < 0.5 ? 'walk' : 'rest'
+  return r < (isCat ? 0.5 : 0.3) ? 'rest' : 'walk'
+}
+
+/** 周期步态分布：统计报告期内各步态出现的天数（用于报告圆角环形图） */
+export function gaitDistributionOf(
+  days: { ts: number; steps: number }[],
+  pet: PetInfo,
+  stepsMax = 12800,
+): Record<'trot' | 'walk' | 'run' | 'rest', number> {
+  const dist: Record<'trot' | 'walk' | 'run' | 'rest', number> = { trot: 0, walk: 0, run: 0, rest: 0 }
+  for (const d of days) dist[dayGait(pet, d.ts, d.steps, stepsMax)]++
+  return dist
+}
+
+/**
  * 由步数推导当日运动指标（物种基线 + 活动强度，确定性生成）
  * stepsMax 用于归一化活动强度：日粒度 12800 步，小时粒度约 620 步
  */

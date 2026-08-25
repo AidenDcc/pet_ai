@@ -1,6 +1,6 @@
 import { defineMock, MockError, requireUser, requireRole, uid, reportNo, paginate } from '../helper'
 import { reports, findPetById, findUserById, findVetByUserId, vets, dailyAgg, health } from '../db'
-import { dayExercise } from '../exercise'
+import { dayExercise, gaitDistributionOf } from '../exercise'
 import { referenceRangesOf } from '../refRange'
 import type { PetInfo, ReportItem, ReportTrend } from '@/types'
 
@@ -201,6 +201,7 @@ defineMock([
       const totalActivity = days.reduce((s, d) => s + d.steps, 0)
       const dailyActivity = days.length ? Math.round(totalActivity / days.length) : 0
       const exs = days.map((d) => dayExercise(pet, d.ts, d.steps))
+      const gaitDistribution = gaitDistributionOf(days, pet)
       const med = (ns: number[]) => (ns.length ? [...ns].sort((a, b) => a - b)[Math.floor(ns.length / 2)] : 0)
       const r1 = (n: number) => Math.round(n * 10) / 10
       const r2 = (n: number) => Math.round(n * 100) / 100
@@ -248,6 +249,7 @@ defineMock([
           stride: Number(med(exs.map((e) => e.stride)).toFixed(1)),
           speed: Number(med(exs.map((e) => e.speed)).toFixed(2)),
           exerciseDurationMin: Math.round(med(exs.map((e) => e.durationMin))),
+          gaitDistribution,
         },
         doctorId: null,
         doctorReview: 'pending',

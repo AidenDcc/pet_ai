@@ -1766,6 +1766,7 @@ export default {
       generateConfirm: 'Generate a new health report for "{name}"?',
       generated: 'Report generated',
       noData: 'No reports',
+      dblclickHint: 'Double-click a row to view details',
       sourceAi: 'AI Generated',
       sourceOffline: 'Offline',
       grade: 'Grade',
@@ -1781,6 +1782,8 @@ export default {
       totalActivity: 'Total Steps',
       exerciseDurationMin: 'Daily Exercise',
       dailyAvg: 'Period Average',
+      gaitShare: 'Share {pct}%',
+      gaitNoData: 'No gait data',
       aiAnalysis: 'AI Analysis',
       aiGrade: 'Overall Health Grade',
       aiGradeLabels: {
