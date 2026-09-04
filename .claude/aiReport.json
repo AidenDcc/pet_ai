@@ -1,0 +1,91 @@
+{
+    "reportVersion": "2.0",
+    "petId": "2001",
+    "petName": "旺财",
+    "deviceId": "9475f310-9492-11f1-aeff-fd8c1323abb6",
+    "periodStart": "2026-08-13T00:00:00",
+    "periodEnd": "2026-08-17T00:00:00",
+    "timeRange": "week",
+    "source": "offline",
+    "overallGrade": "D",
+    "grade": "D",
+    "score": 52,
+    "summary": "旺财 week 健康评估：综合评级D级，周期内主要异常指标：体温(危急)、心率(危急)、血氧饱和度(危急)、呼吸频率(危急)、卡路里(危急)",
+    "aiConclusion": "旺财 week 健康评估：综合评级D级，周期内主要异常指标：体温(危急)、心率(危急)、血氧饱和度(危急)、呼吸频率(危急)、卡路里(危急)",
+    "reportDetail": "# 旺财 健康报告\n\n旺财 week 健康评估：综合评级D级，周期内主要异常指标：体温(危急)、心率(危急)、血氧饱和度(危急)、呼吸频率(危急)、卡路里(危急)\n\n> 本报告依据 ThingsBoard 历史遥测数据和宠物健康规则生成，仅供参考，不替代宠物医生诊断。",
+    "referenceRanges": {
+        "temperature": "35.0 ~ 38.0 °C（体表温度，需按设备标定）",
+        "heartRate": "按物种/体重分层",
+        "spo2": "≥ 95 %",
+        "respiratoryRate": "按物种/体重分层"
+    },
+    "metricsSummary": {
+        "heartRate": {
+            "avg": 0,
+            "min": 0,
+            "max": 0
+        },
+        "respiratoryRate": {
+            "avg": 0,
+            "min": 0,
+            "max": 0
+        },
+        "spo2": {
+            "avg": 0,
+            "min": 0,
+            "max": 0
+        },
+        "temperature": {
+            "avg": 0,
+            "min": 0,
+            "max": 0
+        },
+        "totalActivity": 0,
+        "sleepDuration": 0
+    },
+    "exerciseSummary": {
+        "totalActivity": 0,
+        "dailyActivity": 0,
+        "stepFreq": 0,
+        "stride": 0,
+        "speed": 0,
+        "exerciseDurationMin": 0,
+        "calorie": 0
+    },
+    "compare": {
+        "temperature": 0,
+        "heartRate": 0,
+        "spo2": 0,
+        "respiratoryRate": 0,
+        "stepFreq": 0,
+        "stride": 0,
+        "speed": 0,
+        "calorie": 0
+    },
+    "abnormalIndicators": [
+        "体温(危急)",
+        "心率(危急)",
+        "血氧饱和度(危急)",
+        "呼吸频率(危急)",
+        "卡路里(危急)"
+    ],
+    "rootCauseAnalysis": "周期内主要异常指标：体温(危急)、心率(危急)、血氧饱和度(危急)、呼吸频率(危急)、卡路里(危急)",
+    "recommendations": [
+        "存在明显健康风险，建议尽快联系宠物医院就诊。"
+    ],
+    "vetReferral": {
+        "needed": true,
+        "urgency": "urgent",
+        "warning": "建议尽快联系宠物医院就诊。",
+        "suggestedExams": [
+            "血常规",
+            "影像学检查"
+        ]
+    },
+    "telemetrySummary": {
+
+    },
+    "rawTelemetry": {
+
+    }
+}
